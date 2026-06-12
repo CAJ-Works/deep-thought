@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: deep-thought-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Maps host macOS localhost access for LM Studio
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: deep-thought-tunnel
+    # Retrieves CLOUDFLARE_TUNNEL_TOKEN from the .env file
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-default_token_placeholder}
+    restart: unless-stopped
+    depends_on:
+      - app

@@ -1,0 +1,261 @@
+import os
+import re
+import json
+import logging
+import urllib.parse
+import requests
+from bs4 import BeautifulSoup
+import google.generativeai as genai
+import config
+from config import (
+    LM_STUDIO_BASE_URL,
+    LM_STUDIO_MODEL,
+    GEMINI_API_KEY
+)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Configure Gemini API
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+class AIService:
+    @staticmethod
+    def transcribe_audio(file_path: str) -> str:
+        """
+        Transcribes audio file using Gemini API or returns a placeholder.
+        """
+        if not GEMINI_API_KEY:
+            logger.warning("GEMINI_API_KEY not configured. Cannot perform transcription.")
+            return "[Transcription Error: Gemini API key not configured]"
+        
+        try:
+            logger.info(f"Uploading audio file {file_path} to Gemini...")
+            audio_file = genai.upload_file(path=file_path)
+            
+            logger.info("Generating transcription with Gemini 1.5 Flash...")
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content([
+                "Please transcribe this audio recording into clean text. If the audio is empty or has only noise, return an empty string.",
+                audio_file
+            ])
+            
+            # Clean up the file on Google's servers
+            try:
+                audio_file.delete()
+            except Exception as e:
+                logger.warning(f"Failed to delete uploaded audio file: {e}")
+                
+            transcription = response.text.strip()
+            logger.info(f"Transcription successful: '{transcription}'")
+            return transcription
+        except Exception as e:
+            logger.error(f"Error during audio transcription: {e}")
+            return f"[Transcription Failed: {str(e)}]"
+
+    @staticmethod
+    def query_lm_studio(prompt: str, system_prompt: str = "") -> str:
+        """
+        Queries the local LM Studio instance on the macOS host (port 1234) using standard OpenAI chat completion API.
+        """
+        try:
+            url = f"{LM_STUDIO_BASE_URL}/chat/completions"
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            payload = {
+                "model": LM_STUDIO_MODEL or "local-model",
+                "messages": messages,
+                "temperature": 0.3,
+                "stream": False
+            }
+            
+            response = requests.post(url, json=payload, timeout=15)
+            if response.status_code == 200:
+                result = response.json()
+                choices = result.get("choices", [])
+                if choices:
+                    return choices[0].get("message", {}).get("content", "").strip()
+            logger.warning(f"LM Studio API returned status code {response.status_code} or empty body.")
+            return ""
+        except Exception as e:
+            logger.warning(f"Failed to query local LM Studio model: {e}")
+            return ""
+
+    @classmethod
+    def query_llm(cls, prompt: str, system_prompt: str = "", use_gemini_fallback: bool = True) -> str:
+        """
+        Queries the local LM Studio model first, falling back to Gemini API if LM Studio is offline.
+        """
+        # Try LM Studio
+        response = cls.query_lm_studio(prompt, system_prompt)
+        if response:
+            return response
+            
+        # Fall back to Gemini API
+        if use_gemini_fallback and GEMINI_API_KEY:
+            try:
+                logger.info("LM Studio offline. Falling back to Gemini API...")
+                model = genai.GenerativeModel(
+                    "gemini-1.5-flash",
+                    system_instruction=system_prompt if system_prompt else None
+                )
+                response = model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as e:
+                logger.error(f"Gemini fallback failed: {e}")
+                
+        return "[LLM generation failed: No model available]"
+
+    @classmethod
+    def categorize_thought(cls, content: str) -> str:
+        """
+        Categorizes a thought into a single short category.
+        """
+        system_prompt = (
+            "You are a categorization assistant. Group the user's input into exactly one category name. "
+            "Respond with only the category name (1-3 words max, e.g. 'Project Idea', 'Research', 'Personal', 'To-Do', 'Meeting Notes', 'General'). "
+            "Do not include any quotes, periods, or extra explanation."
+        )
+        category = cls.query_llm(
+            prompt=f"Classify this thought: '{content}'",
+            system_prompt=system_prompt
+        )
+        # Clean up output
+        category = category.replace('"', '').replace("'", "").strip()
+        if category.startswith("[") or len(category) > 30:
+            return "General"
+        return category
+
+    @classmethod
+    def analyze_and_summarize(cls, content: str) -> str:
+        """
+        Generates a summary and metadata analysis of the thought.
+        """
+        system_prompt = (
+            "You are a cognitive assistant. Provide a brief analysis of the user's thought. "
+            "Include: 1) A 1-sentence concise summary. 2) Key entities or topics mentioned. "
+            "Format the output as a clean, brief markdown response."
+        )
+        return cls.query_llm(
+            prompt=f"Analyze this thought entry:\n\n{content}",
+            system_prompt=system_prompt
+        )
+
+    @staticmethod
+    def search_web_ddg(query: str, max_results: int = 3) -> list:
+        """
+        Performs web search via DuckDuckGo HTML parsing.
+        """
+        try:
+            logger.info(f"Performing web research for query: '{query}'")
+            headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+            res = requests.get(url, headers=headers, timeout=10)
+            
+            if res.status_code != 200:
+                logger.warning(f"DuckDuckGo returned status code {res.status_code}")
+                return []
+                
+            soup = BeautifulSoup(res.text, "html.parser")
+            results = []
+            
+            # Find result blocks
+            for div in soup.find_all("div", class_="result__body")[:max_results]:
+                a_title = div.find("a", class_="result__snippet")
+                a_url = div.find("a", class_="result__url")
+                
+                if not a_url:
+                    continue
+                    
+                title = a_title.text.strip() if a_title else "No Title"
+                url_raw = a_url.get("href", "")
+                
+                # Extract real url
+                parsed_url = urllib.parse.urlparse(url_raw)
+                q_params = urllib.parse.parse_qs(parsed_url.query)
+                real_url = q_params.get("uddg", [url_raw])[0]
+                
+                # Check for snippet
+                snippet_div = div.find("a", class_="result__snippet")
+                snippet = snippet_div.text.strip() if snippet_div else ""
+                
+                results.append({
+                    "title": title,
+                    "url": real_url,
+                    "snippet": snippet
+                })
+            
+            logger.info(f"Found {len(results)} web references.")
+            return results
+        except Exception as e:
+            logger.error(f"DuckDuckGo search scraper failed: {e}")
+            return []
+
+    @classmethod
+    def get_search_queries(cls, content: str) -> list:
+        """
+        Asks the LLM to generate 1-2 search queries for web research context.
+        """
+        system_prompt = (
+            "You are a search assistant. Based on the user's thought, generate 1 or 2 specific search queries "
+            "that would find background context or relevant links on Google. "
+            "Format the output as a simple JSON array of strings, e.g. [\"query 1\", \"query 2\"]. "
+            "Only return the JSON array, no other text."
+        )
+        response = cls.query_llm(
+            prompt=f"Thought: '{content}'",
+            system_prompt=system_prompt
+        )
+        try:
+            # Extract JSON block using regex if LLM outputs markdown
+            match = re.search(r"(\[.*?\])", response, re.DOTALL)
+            if match:
+                queries = json.loads(match.group(1))
+                if isinstance(queries, list):
+                    return [str(q) for q in queries]
+        except Exception as e:
+            logger.warning(f"Failed to parse search queries JSON: {e}. Raw response: {response}")
+        
+        # Fallback to simple query if JSON parsing fails
+        words = content.split()[:5]
+        return [" ".join(words)] if words else []
+
+
+class GoogleKeepSync:
+    """
+    Syncs thoughts to/from Google Keep using gkeepapi.
+    """
+    @staticmethod
+    def push_thought_to_keep(username: str, content: str, title: str = "Deep Thought Capture") -> bool:
+        keep_user, keep_pass = config.get_keep_credentials(username)
+        if not keep_user or not keep_pass:
+            logger.info(f"Google Keep credentials not configured for user '{username}'. Skipping push.")
+            return False
+            
+        try:
+            import gkeepapi
+            keep = gkeepapi.Keep()
+            
+            # Login
+            keep.login(keep_user, keep_pass)
+                
+            # Create a note
+            note = keep.createNote(title, content)
+            
+            # Add a 'deep-thought' label
+            label = keep.findLabel("deep-thought")
+            if not label:
+                label = keep.createLabel("deep-thought")
+            note.labels.add(label)
+            
+            keep.sync()
+            logger.info(f"Successfully pushed thought to Google Keep for user '{username}'.")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to sync with Google Keep for user '{username}': {e}")
+            return False

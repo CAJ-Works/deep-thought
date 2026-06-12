@@ -1,0 +1,10 @@
+# Python virtualenv and caches
+venv/
+__pycache__/
+*.pyc
+
+# Local application data and uploads
+data/
+
+# Environment configurations containing secrets
+.env

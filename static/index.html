@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Thought — Capture Console</title>
+    <!-- Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- 1. Authentication PIN Overlay Screen -->
+    <div id="auth-screen" class="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo"></div>
+                <h2>Deep Thought</h2>
+                <p id="auth-subtitle">Verify Identity for subdomain: <span id="workspace-name">chris</span></p>
+            </div>
+            
+            <!-- Pin entry display -->
+            <div class="pin-display-container">
+                <div class="pin-dots">
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                </div>
+                <div class="error-msg-container">
+                    <span id="auth-error-msg" class="error-text"></span>
+                </div>
+            </div>
+
+            <!-- PIN keypad grid -->
+            <div class="keypad-grid">
+                <button class="key-btn" data-val="1">1</button>
+                <button class="key-btn" data-val="2">2</button>
+                <button class="key-btn" data-val="3">3</button>
+                <button class="key-btn" data-val="4">4</button>
+                <button class="key-btn" data-val="5">5</button>
+                <button class="key-btn" data-val="6">6</button>
+                <button class="key-btn" data-val="7">7</button>
+                <button class="key-btn" data-val="8">8</button>
+                <button class="key-btn" data-val="9">9</button>
+                <button class="key-btn key-clear" id="key-clear">C</button>
+                <button class="key-btn" data-val="0">0</button>
+                <button class="key-btn key-backspace" id="key-back" title="Backspace">⌫</button>
+            </div>
+
+            <!-- Trusted Device Checkbox -->
+            <div class="remember-container">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="remember-device">
+                    <span class="checkbox-custom"></span>
+                    Remember this device
+                </label>
+            </div>
+            
+            <button id="auth-submit" class="btn btn-primary btn-auth-submit">Unlock Console</button>
+        </div>
+    </div>
+
+    <!-- 2. Core App Dashboard (Hidden by default until authenticated) -->
+    <div id="app-workspace" class="app-container" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon"></div>
+                <h1>Deep Thought <span class="workspace-badge" id="user-badge">chris</span></h1>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator">
+                    <span class="status-dot online"></span>
+                    <span class="status-text">Connected</span>
+                </div>
+                <button id="logout-btn" class="btn btn-secondary btn-small">Lock Console</button>
+            </div>
+        </header>
+
+        <!-- Main Grid Area -->
+        <main class="app-main">
+            <!-- Left Side Panel: Capture & Feed -->
+            <section class="left-panel">
+                <!-- Thought Capture Card -->
+                <div class="card capture-card">
+                    <h2>Capture Entry</h2>
+                    <div class="textarea-container">
+                        <textarea id="thought-input" placeholder="Enter a thought, project concept, or research link..."></textarea>
+                    </div>
+                    
+                    <div class="capture-controls">
+                        <!-- Geolocation Toggle -->
+                        <div class="location-widget" id="location-toggle" title="Toggle Location Tagging">
+                            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span id="location-status">Location Tagging Off</span>
+                        </div>
+                        
+                        <!-- Voice Recording Button -->
+                        <button id="voice-btn" class="btn btn-secondary voice-btn" title="Record Voice Entry">
+                            <span class="pulse-ring"></span>
+                            <svg class="icon mic-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                            </svg>
+                            <span id="voice-btn-text">Voice Note</span>
+                        </button>
+                        
+                        <!-- Capture Submit -->
+                        <button id="submit-btn" class="btn btn-primary">
+                            <span>Capture</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Recording Visualizer bar -->
+                    <div class="waveform-container" id="waveform-container">
+                        <canvas id="waveform-canvas"></canvas>
+                        <span id="recording-timer">00:00</span>
+                    </div>
+                </div>
+
+                <!-- Unread status metrics -->
+                <div class="unread-metric-bar" id="unread-metric-bar">
+                    <span class="metric-item"><span class="metric-bullet"></span><span id="unprocessed-count">0</span> unprocessed thoughts</span>
+                </div>
+
+                <!-- Thought Timeline Feed -->
+                <div class="timeline-container">
+                    <div class="timeline-header">
+                        <h2>Thought Timeline</h2>
+                        <div class="filter-controls">
+                            <input type="text" id="search-input" placeholder="Search content...">
+                            <select id="category-filter">
+                                <option value="">All Categories</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="timeline-list" id="timeline-list">
+                        <div class="loading-spinner">Loading library...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side Panel: Interactive Graph & Integration Status -->
+            <section class="right-panel">
+                <!-- Semantic Connection Diagram -->
+                <div class="card graph-card">
+                    <div class="card-header">
+                        <h2>Thematic Graph Network</h2>
+                        <button id="reset-graph-btn" class="btn btn-small">Recenter</button>
+                    </div>
+                    <p class="card-subtitle">Local models index entries to automatically map thematic paths and turtle-to-alligator links.</p>
+                    
+                    <div class="canvas-container">
+                        <canvas id="network-canvas"></canvas>
+                        <div class="graph-legend">
+                            <span class="legend-item"><span class="legend-color node-general"></span>General</span>
+                            <span class="legend-item"><span class="legend-color node-research"></span>Research</span>
+                            <span class="legend-item"><span class="legend-color node-idea"></span>Idea</span>
+                            <span class="legend-item"><span class="legend-color node-todo"></span>To-Do</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Google Keep note sync indicator -->
+                <div class="card keep-card">
+                    <div class="keep-logo-area">
+                        <div class="keep-logo"></div>
+                        <div>
+                            <h3>Google Keep Synchronization</h3>
+                            <p class="card-subtitle" style="margin: 0;">Pushing note packages containing context results with label <span class="badge label-badge">deep-thought</span>.</p>
+                        </div>
+                    </div>
+                    <div class="keep-sync-status">
+                        <span class="badge badge-success">Active Sync</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Detailed Modal Overlay -->
+    <div class="modal-overlay" id="details-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Thought Detail Analysis</h3>
+                <button class="close-modal-btn" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Populated dynamically by app.js -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
