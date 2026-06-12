@@ -848,41 +848,7 @@ textarea:focus {
 .node-idea { background-color: #fd9644; }
 .node-todo { background-color: #fc5c65; }
 
-/* Keep Card */
-.keep-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-}
 
-.keep-logo-area {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.keep-logo {
-    width: 32px;
-    height: 32px;
-    background-color: var(--warning-color);
-    border-radius: 8px;
-    position: relative;
-}
-
-.keep-logo::after {
-    content: '💡';
-    font-size: 1.1rem;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.keep-sync-status {
-    display: flex;
-    align-items: center;
-}
 
 /* Modal details */
 .modal-overlay {

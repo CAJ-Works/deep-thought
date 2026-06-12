@@ -2,8 +2,6 @@
 
 Deep Thought is a private, self-hosted web console and background cognitive pipeline designed to run on a local Mac Mini. It allows you to instantly capture thoughts via text or voice, tags your location, and runs background enrichment workers using local models (LM Studio), the Gemini API, and web crawls to categorize, contextualize, and link your ideas into an evolving semantic network.
 
-It also synchronizes your thoughts with Google Keep under a `#deep-thought` label.
-
 ---
 
 ## Technical Architecture
@@ -85,15 +83,7 @@ To ensure the local models run with Apple Silicon GPU acceleration (Metal), LM S
 
    # Gemini API Key (Needed for transcription)
    GEMINI_API_KEY=your_gemini_api_key_here
-
-   # User Keep Sync Configurations (Optional)
-   KEEP_USERNAME_CHRIS=chris@gmail.com
-   KEEP_PASSWORD_CHRIS=your_google_app_password
-
-   KEEP_USERNAME_BRANDON=brandon@gmail.com
-   KEEP_PASSWORD_BRANDON=your_google_app_password
    ```
-   *Note: If you use Google Keep sync, you must create a Google App Password (not your primary password) under your Google account security settings.*
 
 ---
 

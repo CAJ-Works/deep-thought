@@ -268,13 +268,7 @@ def enrich_thought_task(thought_id: int):
                     )
                     db.add(link)
                     
-        # 5. Push note to user's Google Keep note feed
-        GoogleKeepSync.push_thought_to_keep(
-            username=thought.user.username,
-            content=f"{thought.content}\n\nCategory: {category}\nLocation: {thought.location_name or 'Not recorded'}",
-            title=f"Captured Thought ({thought.created_at.strftime('%Y-%m-%d %H:%M')})"
-        )
-        
+
         thought.processed = True
         db.commit()
         logger.info(f"Thought {thought_id} successfully enriched.")

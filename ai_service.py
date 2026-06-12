@@ -226,36 +226,4 @@ class AIService:
         return [" ".join(words)] if words else []
 
 
-class GoogleKeepSync:
-    """
-    Syncs thoughts to/from Google Keep using gkeepapi.
-    """
-    @staticmethod
-    def push_thought_to_keep(username: str, content: str, title: str = "Deep Thought Capture") -> bool:
-        keep_user, keep_pass = config.get_keep_credentials(username)
-        if not keep_user or not keep_pass:
-            logger.info(f"Google Keep credentials not configured for user '{username}'. Skipping push.")
-            return False
-            
-        try:
-            import gkeepapi
-            keep = gkeepapi.Keep()
-            
-            # Login
-            keep.login(keep_user, keep_pass)
-                
-            # Create a note
-            note = keep.createNote(title, content)
-            
-            # Add a 'deep-thought' label
-            label = keep.findLabel("deep-thought")
-            if not label:
-                label = keep.createLabel("deep-thought")
-            note.labels.add(label)
-            
-            keep.sync()
-            logger.info(f"Successfully pushed thought to Google Keep for user '{username}'.")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to sync with Google Keep for user '{username}': {e}")
-            return False
+

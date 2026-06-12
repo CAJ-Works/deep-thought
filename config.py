@@ -22,12 +22,3 @@ LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "")
 
 # Gemini Cloud API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-
-def get_keep_credentials(username: str):
-    """
-    Retrieves Google Keep credentials from environment dynamically based on username.
-    """
-    key_suffix = username.strip().upper()
-    user = os.getenv(f"KEEP_USERNAME_{key_suffix}", "")
-    password = os.getenv(f"KEEP_PASSWORD_{key_suffix}", "")
-    return user, password
