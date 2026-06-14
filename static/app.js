@@ -1157,26 +1157,32 @@ function initThoughtMap() {
     
     // Add markers for all thoughts with coordinates
     if (mapThoughts.length > 0) {
-        // Group thoughts by exact coordinates
-        const grouped = {};
+        // Group thoughts by proximity (within ~50 meters / 0.0005 degrees)
+        const grouped = [];
+        const THRESHOLD = 0.0005;
+        
         mapThoughts.forEach(t => {
-            const latKey = Number(t.latitude).toFixed(6);
-            const lonKey = Number(t.longitude).toFixed(6);
-            const key = `${latKey},${lonKey}`;
+            const lat = Number(t.latitude);
+            const lon = Number(t.longitude);
             
-            if (!grouped[key]) {
-                grouped[key] = {
-                    latitude: Number(t.latitude),
-                    longitude: Number(t.longitude),
-                    thoughts: []
-                };
+            const group = grouped.find(g => {
+                return Math.abs(g.latitude - lat) < THRESHOLD && Math.abs(g.longitude - lon) < THRESHOLD;
+            });
+            
+            if (group) {
+                group.thoughts.push(t);
+            } else {
+                grouped.push({
+                    latitude: lat,
+                    longitude: lon,
+                    thoughts: [t]
+                });
             }
-            grouped[key].thoughts.push(t);
         });
 
         const latLngs = [];
         
-        Object.values(grouped).forEach(group => {
+        grouped.forEach(group => {
             // Sort thoughts newest to oldest
             group.thoughts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             
