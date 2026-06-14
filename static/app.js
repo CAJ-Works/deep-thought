@@ -207,7 +207,7 @@ function setupCaptureEvents() {
         if (!isLocationActive) {
             // Activate location tagging
             if ("geolocation" in navigator) {
-                document.getElementById("location-status").textContent = "Locating...";
+                document.getElementById("location-status").textContent = "Location ⏳";
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         userCoordinates = {
@@ -216,24 +216,24 @@ function setupCaptureEvents() {
                         };
                         isLocationActive = true;
                         locToggle.classList.add("active");
-                        document.getElementById("location-status").textContent = "Location Active";
+                        document.getElementById("location-status").textContent = "Location ✅";
                     },
                     (error) => {
                         isLocationActive = false;
                         locToggle.classList.remove("active");
-                        document.getElementById("location-status").textContent = "GPS Blocked";
+                        document.getElementById("location-status").textContent = "Location ❌";
                         logger.warning("GPS access error: " + error.message);
                     }
                 );
             } else {
-                document.getElementById("location-status").textContent = "GPS Unsupported";
+                document.getElementById("location-status").textContent = "Location ❌";
             }
         } else {
             // Turn off location tagging
             userCoordinates = null;
             isLocationActive = false;
             locToggle.classList.remove("active");
-            document.getElementById("location-status").textContent = "Location Tagging Off";
+            document.getElementById("location-status").textContent = "Location ❌";
         }
     });
 
@@ -283,7 +283,7 @@ async function toggleVoiceRecording() {
         // Stop recording
         mediaRecorder.stop();
         voiceBtn.classList.remove("recording");
-        voiceText.textContent = "Voice Note";
+        if (voiceText) voiceText.textContent = "Voice Note";
         stopWaveformVisualizer();
         return;
     }
@@ -310,7 +310,7 @@ async function toggleVoiceRecording() {
         
         mediaRecorder.start();
         voiceBtn.classList.add("recording");
-        voiceText.textContent = "Recording...";
+        if (voiceText) voiceText.textContent = "Recording...";
         document.getElementById("waveform-container").classList.add("active");
         
         startWaveformVisualizer(stream);

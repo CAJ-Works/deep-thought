@@ -71,11 +71,12 @@
                 <h1>Deep Thought <span class="workspace-badge" id="user-badge">chris</span></h1>
             </div>
             <div class="header-right">
-                <div class="status-indicator">
-                    <span class="status-dot online"></span>
-                    <span class="status-text">Connected</span>
-                </div>
-                <button id="logout-btn" class="btn btn-secondary btn-small">Lock Console</button>
+                <button id="logout-btn" class="btn btn-secondary btn-small" title="Lock Console" style="padding: 6px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px;">
+                    <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </button>
             </div>
         </header>
 
@@ -85,7 +86,7 @@
             <section class="left-panel">
                 <!-- Thought Capture Card -->
                 <div class="card capture-card">
-                    <h2>Capture Entry</h2>
+                    <h2>Your Thought</h2>
                     <div class="textarea-container">
                         <textarea id="thought-input" placeholder="Enter a thought, project concept, or research link..."></textarea>
                     </div>
@@ -97,7 +98,7 @@
                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                                 <circle cx="12" cy="10" r="3"></circle>
                             </svg>
-                            <span id="location-status">Location Tagging Off</span>
+                            <span id="location-status">Location ❌</span>
                         </div>
                         
                         <!-- Voice Recording Button -->
@@ -109,7 +110,6 @@
                                 <line x1="12" y1="19" x2="12" y2="23"></line>
                                 <line x1="8" y1="23" x2="16" y2="23"></line>
                             </svg>
-                            <span id="voice-btn-text">Voice Note</span>
                         </button>
                         
                         <!-- Capture Submit -->
