@@ -45,46 +45,82 @@ class AIService:
         """
         Transcribes audio file using local Whisper model or falls back to Gemini API.
         """
-        if USE_LOCAL_WHISPER:
-            try:
-                model = cls.get_whisper_model()
-                logger.info(f"Transcribing audio file {file_path} using local Whisper...")
-                segments = model.transcribe(file_path)
-                transcription = " ".join([seg.text for seg in segments]).strip()
-                logger.info(f"Local transcription successful: '{transcription}'")
-                return transcription
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                logger.error(f"Local Whisper transcription failed: {e}. Falling back to Gemini...")
+        import subprocess
         
-        if not GEMINI_API_KEY:
-            logger.warning("GEMINI_API_KEY not configured. Cannot perform transcription.")
-            return "[Transcription Error: Gemini API key not configured and local Whisper failed]"
+        # Transcode input file to standard 16kHz, mono, 16-bit PCM WAV to ensure compatibility
+        transcoded_path = file_path + ".transcoded.wav"
+        logger.info(f"Transcoding audio payload {file_path} to standard 16kHz PCM WAV...")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", file_path,
+            "-ar", "16000",
+            "-ac", "1",
+            "-c:a", "pcm_s16le",
+            transcoded_path
+        ]
+        
+        conversion_success = False
+        try:
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if result.returncode == 0:
+                logger.info(f"Audio transcoded successfully to {transcoded_path}")
+                conversion_success = True
+            else:
+                logger.error(f"FFmpeg transcoding failed (code {result.returncode}): {result.stderr}")
+        except Exception as e:
+            logger.error(f"Failed to execute FFmpeg transcoding: {e}")
+            
+        active_path = transcoded_path if conversion_success else file_path
         
         try:
-            logger.info(f"Uploading audio file {file_path} to Gemini...")
-            audio_file = genai.upload_file(path=file_path)
+            if USE_LOCAL_WHISPER:
+                try:
+                    model = cls.get_whisper_model()
+                    logger.info(f"Transcribing audio file {active_path} using local Whisper...")
+                    segments = model.transcribe(active_path)
+                    transcription = " ".join([seg.text for seg in segments]).strip()
+                    logger.info(f"Local transcription successful: '{transcription}'")
+                    return transcription
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    logger.error(f"Local Whisper transcription failed: {e}. Falling back to Gemini...")
             
-            logger.info("Generating transcription with Gemini 1.5 Flash...")
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content([
-                "Please transcribe this audio recording into clean text. If the audio is empty or has only noise, return an empty string.",
-                audio_file
-            ])
+            if not GEMINI_API_KEY:
+                logger.warning("GEMINI_API_KEY not configured. Cannot perform transcription.")
+                return "[Transcription Error: Gemini API key not configured and local Whisper failed]"
             
-            # Clean up the file on Google's servers
             try:
-                audio_file.delete()
-            except Exception as e:
-                logger.warning(f"Failed to delete uploaded audio file: {e}")
+                logger.info(f"Uploading audio file {active_path} to Gemini...")
+                audio_file = genai.upload_file(path=active_path)
                 
-            transcription = response.text.strip()
-            logger.info(f"Transcription successful: '{transcription}'")
-            return transcription
-        except Exception as e:
-            logger.error(f"Error during audio transcription: {e}")
-            return f"[Transcription Failed: {str(e)}]"
+                logger.info("Generating transcription with Gemini 1.5 Flash...")
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                response = model.generate_content([
+                    "Please transcribe this audio recording into clean text. If the audio is empty or has only noise, return an empty string.",
+                    audio_file
+                ])
+                
+                # Clean up the file on Google's servers
+                try:
+                    audio_file.delete()
+                except Exception as e:
+                    logger.warning(f"Failed to delete uploaded audio file: {e}")
+                    
+                transcription = response.text.strip()
+                logger.info(f"Transcription successful: '{transcription}'")
+                return transcription
+            except Exception as e:
+                logger.error(f"Error during audio transcription: {e}")
+                return f"[Transcription Failed: {str(e)}]"
+        finally:
+            # Clean up the transcoded temporary file if it was created
+            if conversion_success and os.path.exists(transcoded_path):
+                try:
+                    os.remove(transcoded_path)
+                    logger.info(f"Cleaned up transcoded file: {transcoded_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove transcoded file: {e}")
 
     @staticmethod
     def query_lm_studio(prompt: str, system_prompt: str = "") -> str:
