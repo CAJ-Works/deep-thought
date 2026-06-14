@@ -1,4 +1,15 @@
 // Deep Thought Frontend Engine
+window.addEventListener("error", (e) => {
+    const errorMsg = `JS Error: ${e.message} at ${e.filename}:${e.lineno}:${e.colno}`;
+    console.error(errorMsg);
+    fetch(`/api/log_error?msg=${encodeURIComponent(errorMsg)}`).catch(() => {});
+});
+window.addEventListener("unhandledrejection", (e) => {
+    const errorMsg = `JS Unhandled Promise Rejection: ${e.reason}`;
+    console.error(errorMsg);
+    fetch(`/api/log_error?msg=${encodeURIComponent(errorMsg)}`).catch(() => {});
+});
+
 let currentPIN = "";
 let currentUser = "";
 let activeThoughts = [];
@@ -1084,6 +1095,17 @@ function setupMapEvents() {
             }
         });
     }
+
+    // Handle clicking a thought detail link inside leaflet map popups
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".view-thought-details-btn");
+        if (btn) {
+            e.preventDefault();
+            const thoughtId = btn.getAttribute("data-id");
+            if (mapModal) mapModal.classList.remove("active");
+            openThoughtDetails(thoughtId);
+        }
+    });
 }
 
 function initThoughtMap() {
@@ -1135,9 +1157,32 @@ function initThoughtMap() {
     
     // Add markers for all thoughts with coordinates
     if (mapThoughts.length > 0) {
-        const latLngs = [];
+        // Group thoughts by exact coordinates
+        const grouped = {};
         mapThoughts.forEach(t => {
-            const markerColor = getMarkerColorForCategory(t.category);
+            const latKey = Number(t.latitude).toFixed(6);
+            const lonKey = Number(t.longitude).toFixed(6);
+            const key = `${latKey},${lonKey}`;
+            
+            if (!grouped[key]) {
+                grouped[key] = {
+                    latitude: Number(t.latitude),
+                    longitude: Number(t.longitude),
+                    thoughts: []
+                };
+            }
+            grouped[key].thoughts.push(t);
+        });
+
+        const latLngs = [];
+        
+        Object.values(grouped).forEach(group => {
+            // Sort thoughts newest to oldest
+            group.thoughts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            
+            // Marker color is based on the newest thought in the group
+            const newestThought = group.thoughts[0];
+            const markerColor = getMarkerColorForCategory(newestThought.category);
             
             // Custom divIcon matching application segment brand colors
             const customIcon = L.divIcon({
@@ -1147,38 +1192,39 @@ function initThoughtMap() {
                 iconAnchor: [7, 7]
             });
             
-            const dateStr = new Date(t.created_at).toLocaleString();
-            const categoryBadge = t.category ? `<span class="badge badge-category" style="margin-left:0; margin-bottom:4px; display:inline-block;">${t.category}</span>` : "";
-            const snippet = t.content.length > 120 ? t.content.substring(0, 120) + "..." : t.content;
+            // Build popup html containing the timeline list
+            let popupHtml = `<div class="popup-timeline" style="max-height: 250px; overflow-y: auto; padding-right: 6px; font-family: var(--font-body); min-width: 220px; color: var(--text-primary);">`;
             
-            const popupHtml = `
-                <div style="font-family: var(--font-body); color: var(--text-primary); padding: 4px; max-width: 200px;">
-                    <span style="font-size: 0.72rem; color: var(--text-secondary); display:block; margin-bottom:2px;">${dateStr}</span>
-                    ${categoryBadge}
-                    <p style="font-size: 0.82rem; margin: 4px 0 8px 0; color: var(--text-primary); line-height: 1.4; word-break: break-word;">${snippet}</p>
-                    <a href="#" class="view-thought-details-btn" data-id="${t.id}" style="font-size:0.78rem; font-weight:600; color:var(--primary-color); text-decoration:none; display:inline-block;">View Full Details &rarr;</a>
-                </div>
-            `;
+            if (group.thoughts.length > 1) {
+                popupHtml += `<h4 style="margin: 0 0 8px 0; font-size: 0.85rem; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; color: var(--text-primary);">${group.thoughts.length} Thoughts Here</h4>`;
+            }
             
-            const marker = L.marker([t.latitude, t.longitude], { icon: customIcon })
-                .bindPopup(popupHtml)
-                .addTo(thoughtMap);
+            group.thoughts.forEach((t, idx) => {
+                const dateStr = new Date(t.created_at).toLocaleString();
+                const categoryBadge = t.category ? `<span class="badge badge-category" style="margin-left:0; margin-bottom:4px; display:inline-block; font-size: 0.65rem; padding: 2px 6px;">${t.category}</span>` : "";
+                const snippet = t.content.length > 120 ? t.content.substring(0, 120) + "..." : t.content;
                 
-            // Bind click event inside map popup to close map and open thought details modal
-            marker.on('popupopen', () => {
-                const btn = document.querySelector(`.view-thought-details-btn[data-id="${t.id}"]`);
-                if (btn) {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const mapModal = document.getElementById("map-modal");
-                        if (mapModal) mapModal.classList.remove("active");
-                        openThoughtDetails(t.id);
-                    });
-                }
+                const isLast = idx === group.thoughts.length - 1;
+                const itemStyle = isLast ? "" : "border-bottom: 1px solid var(--border-color-hover); margin-bottom: 8px; padding-bottom: 8px;";
+                
+                popupHtml += `
+                    <div class="popup-thought-item" style="${itemStyle}">
+                        <span style="font-size: 0.7rem; color: var(--text-secondary); display:block; margin-bottom:2px;">${dateStr}</span>
+                        ${categoryBadge}
+                        <p style="font-size: 0.8rem; margin: 4px 0 6px 0; color: var(--text-primary); line-height: 1.4; word-break: break-word;">${snippet}</p>
+                        <a href="#" class="view-thought-details-btn" data-id="${t.id}" style="font-size:0.75rem; font-weight:600; color:var(--primary-color); text-decoration:none; display:inline-block;">View Details &rarr;</a>
+                    </div>
+                `;
             });
             
+            popupHtml += `</div>`;
+            
+            const marker = L.marker([group.latitude, group.longitude], { icon: customIcon })
+                .bindPopup(popupHtml)
+                .addTo(thoughtMap);
+            
             mapMarkers.push(marker);
-            latLngs.push([t.latitude, t.longitude]);
+            latLngs.push([group.latitude, group.longitude]);
         });
         
         // Fit map bounds to view all markers automatically

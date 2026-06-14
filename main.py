@@ -233,6 +233,11 @@ def login(
 def get_me(user: User = Depends(get_current_user)):
     return {"authenticated": True, "username": user.username, "theme": user.theme, "location_enabled": user.location_enabled}
 
+@app.get("/api/log_error")
+def log_error(msg: str):
+    logger.warning(f"FRONTEND ERROR DETECTED: {msg}")
+    return {"status": "logged"}
+
 @app.post("/api/user/settings")
 def update_settings(
     settings_in: SettingsUpdateRequest,

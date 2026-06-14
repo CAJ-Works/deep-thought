@@ -1553,3 +1553,18 @@ body[data-theme="tokyo"] .filter-controls select {
 .leaflet-bar a:hover {
     background-color: var(--card-bg-hover) !important;
 }
+
+/* Custom scrollbars inside the map popup timeline */
+.popup-timeline::-webkit-scrollbar {
+    width: 6px;
+}
+.popup-timeline::-webkit-scrollbar-track {
+    background: transparent;
+}
+.popup-timeline::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+.popup-timeline::-webkit-scrollbar-thumb:hover {
+    background: var(--border-color-hover);
+}
