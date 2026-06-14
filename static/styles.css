@@ -428,6 +428,13 @@ body {
     backdrop-filter: none;
 }
 
+.capture-card h2 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
 .textarea-container {
     width: 100%;
     margin-bottom: 16px;
@@ -1046,13 +1053,23 @@ textarea:focus {
         margin-bottom: 12px;
     }
     .logo-area h1 {
-        font-size: 1.25rem;
+        font-size: 1.2rem;
+        white-space: nowrap;
     }
     .card {
         padding: 14px;
         border-radius: 12px;
     }
     .capture-controls {
-        gap: 10px;
+        gap: 8px;
+    }
+    .btn {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+    .location-widget {
+        padding: 8px 10px;
+        font-size: 0.78rem;
+        gap: 4px;
     }
 }
