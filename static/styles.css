@@ -421,8 +421,11 @@ body {
 
 /* Capture Console Card */
 .capture-card {
-    border-color: rgba(108, 92, 231, 0.15);
-    background: radial-gradient(circle at top right, rgba(108, 92, 231, 0.05), transparent), var(--card-bg);
+    border: none;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    backdrop-filter: none;
 }
 
 .textarea-container {
@@ -1031,5 +1034,25 @@ textarea:focus {
         width: 56px;
         height: 56px;
         font-size: 1.3rem;
+    }
+}
+
+@media(max-width: 600px) {
+    .app-container {
+        padding: 10px 8px;
+    }
+    .app-header {
+        padding: 10px 4px 15px 4px;
+        margin-bottom: 12px;
+    }
+    .logo-area h1 {
+        font-size: 1.25rem;
+    }
+    .card {
+        padding: 14px;
+        border-radius: 12px;
+    }
+    .capture-controls {
+        gap: 10px;
     }
 }
