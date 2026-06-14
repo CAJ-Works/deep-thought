@@ -42,15 +42,21 @@ function detectSubdomain() {
     const host = window.location.host;
     const parts = host.split(":")[0].split(".");
     let subdomain = "chris";
-    if (parts.length >= 3) {
-        const prefix = parts[0].lower();
+    
+    // Check if accessing via an IP address to avoid setting subdomain to "127"
+    const isIP = parts.length === 4 && parts.every(part => /^\d+$/.test(part));
+    
+    if (parts.length >= 3 && !isIP) {
+        const prefix = parts[0].toLowerCase();
         if (prefix !== "www" && prefix !== "api" && prefix !== "app") {
             subdomain = prefix;
         }
     }
     currentUser = subdomain;
-    document.getElementById("workspace-name").textContent = subdomain;
-    document.getElementById("user-badge").textContent = subdomain;
+    const wsName = document.getElementById("workspace-name");
+    if (wsName) wsName.textContent = subdomain;
+    const userBadge = document.getElementById("user-badge");
+    if (userBadge) userBadge.textContent = subdomain;
 }
 
 async function checkAuthStatus() {

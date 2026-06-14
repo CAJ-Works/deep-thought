@@ -70,7 +70,11 @@ def get_subdomain(request: Request) -> str:
     """
     host = request.headers.get("host", "")
     host_parts = host.split(":")[0].split(".")
-    if len(host_parts) >= 3:
+    
+    # If it is a local IP address (e.g. 127.0.0.1 or any other IP)
+    is_ip = len(host_parts) == 4 and all(part.isdigit() for part in host_parts)
+    
+    if len(host_parts) >= 3 and not is_ip:
         subdomain = host_parts[0].lower()
         if subdomain not in ["www", "api", "app"]:
             return subdomain
