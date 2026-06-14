@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Thought | Admin Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #07090e;
+            --card-bg: rgba(13, 17, 27, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-color: #f1f3f9;
+            --text-muted: #8b9bb4;
+            --primary-color: #6c5ce7;
+            --primary-glow: rgba(108, 92, 231, 0.4);
+            --success-color: #00b894;
+            --success-glow: rgba(0, 184, 148, 0.3);
+            --error-color: #ff7675;
+            --error-glow: rgba(255, 118, 117, 0.3);
+            --warning-color: #fdcb6e;
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-display: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 184, 148, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
+            color: var(--text-color);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fff 30%, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lan-badge {
+            background: rgba(0, 184, 148, 0.12);
+            color: var(--success-color);
+            border: 1px solid rgba(0, 184, 148, 0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .btn {
+            font-family: var(--font-main);
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px var(--primary-glow);
+            background: #7d70eb;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-danger {
+            background: rgba(255, 118, 117, 0.12);
+            color: var(--error-color);
+            border: 1px solid rgba(255, 118, 117, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: var(--error-color);
+            color: white;
+            box-shadow: 0 4px 12px var(--error-glow);
+        }
+
+        .btn-success {
+            background: rgba(0, 184, 148, 0.12);
+            color: var(--success-color);
+            border: 1px solid rgba(0, 184, 148, 0.2);
+        }
+
+        .btn-success:hover {
+            background: var(--success-color);
+            color: white;
+            box-shadow: 0 4px 12px var(--success-glow);
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 340fr;
+            gap: 32px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .main-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 24px;
+        }
+
+        .sidebar-section {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            align-self: start;
+        }
+
+        h2 {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        /* Users Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 16px;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .username-cell {
+            font-weight: 600;
+        }
+
+        .subdomain-tag {
+            background: rgba(108, 92, 231, 0.12);
+            color: #a29bfe;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-active {
+            background: rgba(0, 184, 148, 0.12);
+            color: var(--success-color);
+        }
+
+        .badge-locked {
+            background: rgba(255, 118, 117, 0.12);
+            color: var(--error-color);
+        }
+
+        /* Forms inputs */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: white;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px rgba(108, 92, 231, 0.25);
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-error {
+            background: rgba(255, 118, 117, 0.1);
+            border: 1px solid rgba(255, 118, 117, 0.2);
+            color: var(--error-color);
+        }
+
+        .alert-success {
+            background: rgba(0, 184, 148, 0.1);
+            border: 1px solid rgba(0, 184, 148, 0.2);
+            color: var(--success-color);
+        }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Modal popup styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: #0d111b;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 480px;
+            border-radius: 16px;
+            padding: 24px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .modal-header h3 {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💡 Deep Thought <span>Admin Console</span></h1>
+            <span class="lan-badge">LAN Only Access</span>
+        </header>
+
+        <div id="alert-box" class="alert"></div>
+
+        <div class="grid-layout">
+            <!-- Left panel: Users list -->
+            <section class="main-section">
+                <h2>Active User Accounts</h2>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Subdomain Map</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Right panel: Create user -->
+            <section class="sidebar-section">
+                <h2>Seeding / Create User</h2>
+                <form id="create-user-form">
+                    <div class="form-group">
+                        <label for="new-username">Username</label>
+                        <input type="text" id="new-username" class="form-control" placeholder="e.g. chris" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-subdomain">Subdomain Mapping</label>
+                        <input type="text" id="new-subdomain" class="form-control" placeholder="e.g. chris (defaults to username)">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-pin">PIN (4 Digits)</label>
+                        <input type="password" id="new-pin" class="form-control" pattern="\d{4}" maxlength="4" placeholder="e.g. 1234" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+                </form>
+            </section>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Edit User Profile</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="edit-user-form">
+                <input type="hidden" id="edit-user-id">
+                <div class="form-group">
+                    <label for="edit-username">Username</label>
+                    <input type="text" id="edit-username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-subdomain">Subdomain Mapping</label>
+                    <input type="text" id="edit-subdomain" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-pin">Reset PIN (Leave empty to keep current)</label>
+                    <input type="password" id="edit-pin" class="form-control" pattern="\d{4}" maxlength="4" placeholder="Enter new 4-digit PIN">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            loadUsers();
+            document.getElementById("create-user-form").addEventListener("submit", createUser);
+            document.getElementById("edit-user-form").addEventListener("submit", saveUserEdit);
+        });
+
+        const alertBox = document.getElementById("alert-box");
+
+        function showAlert(msg, type="success") {
+            alertBox.textContent = msg;
+            alertBox.className = `alert alert-${type}`;
+            alertBox.style.display = "block";
+            setTimeout(() => {
+                alertBox.style.display = "none";
+            }, 5000);
+        }
+
+        async function loadUsers() {
+            const tbody = document.getElementById("users-table-body");
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Fetching users...</td></tr>`;
+            
+            try {
+                const response = await fetch("/api/admin/users");
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--error-color); font-weight: bold;">CORS / 403 Forbidden: Access permitted from LAN (Local Network) only.</td></tr>`;
+                        return;
+                    }
+                    throw new Error("HTTP " + response.status);
+                }
+                const users = await response.json();
+                
+                if (users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No users registered in the console.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = "";
+                users.forEach(u => {
+                    const tr = document.createElement("tr");
+                    
+                    let statusHtml = '<span class="badge badge-active">Active</span>';
+                    let unlockBtn = '';
+                    
+                    if (u.lockout_until) {
+                        const unlockTime = new Date(u.lockout_until);
+                        if (unlockTime > new Date()) {
+                            statusHtml = `<span class="badge badge-locked" title="Locked until: ${unlockTime.toLocaleTimeString()}">Locked</span>`;
+                            unlockBtn = `<button class="btn btn-success btn-small" onclick="unlockUser(${u.id})" style="padding: 4px 8px; font-size: 0.75rem;">Unlock</button>`;
+                        }
+                    } else if (u.failed_attempts > 0) {
+                        statusHtml = `<span class="badge badge-active" style="background: rgba(253, 203, 110, 0.1); color: var(--warning-color);">${u.failed_attempts} Fails</span>`;
+                        unlockBtn = `<button class="btn btn-success btn-small" onclick="unlockUser(${u.id})" style="padding: 4px 8px; font-size: 0.75rem;">Reset Counter</button>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="username-cell">${u.username}</td>
+                        <td><span class="subdomain-tag">${u.subdomain}.teamjames.cc</span></td>
+                        <td>${statusHtml}</td>
+                        <td>
+                            <div class="action-row">
+                                <button class="btn btn-secondary" onclick="openEditModal(${u.id}, '${u.username}', '${u.subdomain}')">Edit</button>
+                                ${unlockBtn}
+                                <button class="btn btn-danger" onclick="deleteUser(${u.id}, '${u.username}')">Delete</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--error-color);">Error fetching user list: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function createUser(e) {
+            e.preventDefault();
+            const username = document.getElementById("new-username").value.trim();
+            const subdomain = document.getElementById("new-subdomain").value.trim() || username;
+            const pin = document.getElementById("new-pin").value;
+
+            try {
+                const response = await fetch("/api/admin/users", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, subdomain, pin })
+                });
+
+                if (response.ok) {
+                    showAlert(`Account for '${username}' successfully seeded!`);
+                    document.getElementById("create-user-form").reset();
+                    loadUsers();
+                } else {
+                    const err = await response.json();
+                    showAlert(err.detail || "Failed to create user.", "error");
+                }
+            } catch (e) {
+                showAlert("Network error.", "error");
+            }
+        }
+
+        async function unlockUser(user_id) {
+            try {
+                const response = await fetch(`/api/admin/users/${user_id}/unlock`, { method: "POST" });
+                if (response.ok) {
+                    showAlert("User lockout state and failure counts reset successfully.");
+                    loadUsers();
+                } else {
+                    showAlert("Failed to unlock user account.", "error");
+                }
+            } catch (e) {
+                showAlert("Network error.", "error");
+            }
+        }
+
+        async function deleteUser(user_id, username) {
+            if (!confirm(`Are you absolutely sure you want to delete '${username}'? This deletes all associated thoughts and databases permanently.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/users/${user_id}`, { method: "DELETE" });
+                if (response.ok) {
+                    showAlert(`User '${username}' deleted successfully.`);
+                    loadUsers();
+                } else {
+                    showAlert("Failed to delete user.", "error");
+                }
+            } catch (e) {
+                showAlert("Network error.", "error");
+            }
+        }
+
+        function openEditModal(id, username, subdomain) {
+            document.getElementById("edit-user-id").value = id;
+            document.getElementById("edit-username").value = username;
+            document.getElementById("edit-subdomain").value = subdomain;
+            document.getElementById("edit-pin").value = "";
+            document.getElementById("edit-modal").classList.add("active");
+        }
+
+        function closeEditModal() {
+            document.getElementById("edit-modal").classList.remove("active");
+        }
+
+        async function saveUserEdit(e) {
+            e.preventDefault();
+            const id = document.getElementById("edit-user-id").value;
+            const username = document.getElementById("edit-username").value.trim();
+            const subdomain = document.getElementById("edit-subdomain").value.trim();
+            const pin = document.getElementById("edit-pin").value || null;
+
+            try {
+                const response = await fetch(`/api/admin/users/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, subdomain, pin })
+                });
+
+                if (response.ok) {
+                    showAlert("User details successfully updated.");
+                    closeEditModal();
+                    loadUsers();
+                } else {
+                    const err = await response.json();
+                    showAlert(err.detail || "Failed to update profile.", "error");
+                }
+            } catch (e) {
+                showAlert("Network error.", "error");
+            }
+        }
+    </script>
+</body>
+</html>

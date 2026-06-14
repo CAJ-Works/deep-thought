@@ -3,6 +3,7 @@ import re
 import shutil
 import datetime
 import logging
+import ipaddress
 from typing import Optional, List
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, Request, Response
 from fastapi.responses import HTMLResponse, FileResponse
@@ -33,6 +34,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def is_private_ip(ip_str: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        return ip.is_private or ip.is_loopback
+    except ValueError:
+        return False
+
+def verify_local_network_access(request: Request):
+    # 1. Check proxy or Cloudflare headers first
+    for header in ["cf-connecting-ip", "x-forwarded-for"]:
+        val = request.headers.get(header)
+        if val:
+            client_ip = val.split(",")[0].strip()
+            if not is_private_ip(client_ip):
+                raise HTTPException(status_code=403, detail="Forbidden: Admin access allowed only from local network.")
+                
+    # 2. Check direct connection IP
+    client_host = request.client.host if request.client else ""
+    if client_host:
+        if not is_private_ip(client_host):
+            raise HTTPException(status_code=403, detail="Forbidden: Admin access allowed only from local network.")
+
 # Directories
 UPLOAD_DIR = config.DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -41,6 +64,16 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 class LoginRequest(BaseModel):
     pin: str
     remember: bool = False
+
+class AdminUserCreate(BaseModel):
+    username: str
+    subdomain: Optional[str] = None
+    pin: str
+
+class AdminUserUpdate(BaseModel):
+    username: Optional[str] = None
+    subdomain: Optional[str] = None
+    pin: Optional[str] = None
 
 class ThoughtCreate(BaseModel):
     content: str
@@ -84,7 +117,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     username = get_subdomain(request)
     
     # Verify user exists in database
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(
+        (User.subdomain == username) |
+        ((User.subdomain == None) & (User.username == username))
+    ).first()
     if not user:
         raise HTTPException(status_code=404, detail=f"User '{username}' does not exist.")
         
@@ -123,7 +159,10 @@ def login(
     db: Session = Depends(get_db)
 ):
     username = get_subdomain(request)
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(
+        (User.subdomain == username) |
+        ((User.subdomain == None) & (User.username == username))
+    ).first()
     if not user:
         raise HTTPException(status_code=404, detail="User workspace not found.")
         
@@ -482,6 +521,103 @@ def get_graph(user: User = Depends(get_current_user), db: Session = Depends(get_
         })
         
     return {"nodes": nodes, "edges": edges}
+
+# ----------------------------------------------------
+# Administrative Interfaces (LAN Restricted)
+# ----------------------------------------------------
+
+@app.get("/admin", response_class=HTMLResponse)
+def serve_admin(request: Request):
+    verify_local_network_access(request)
+    return FileResponse("static/admin.html")
+
+@app.get("/api/admin/users")
+def get_admin_users(request: Request, db: Session = Depends(get_db)):
+    verify_local_network_access(request)
+    users = db.query(User).all()
+    res = []
+    for u in users:
+        res.append({
+            "id": u.id,
+            "username": u.username,
+            "subdomain": u.subdomain or u.username,
+            "failed_attempts": u.failed_attempts,
+            "lockout_until": u.lockout_until.isoformat() if u.lockout_until else None
+        })
+    return res
+
+@app.post("/api/admin/users")
+def create_admin_user(request: Request, user_in: AdminUserCreate, db: Session = Depends(get_db)):
+    verify_local_network_access(request)
+    
+    existing_user = db.query(User).filter(User.username == user_in.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists.")
+        
+    sub = user_in.subdomain or user_in.username
+    existing_sub = db.query(User).filter(User.subdomain == sub).first()
+    if existing_sub:
+        raise HTTPException(status_code=400, detail="Subdomain already mapped to another user.")
+        
+    hashed, salt = database.hash_pin(user_in.pin)
+    new_user = User(
+        username=user_in.username,
+        subdomain=sub,
+        pin_hash=hashed,
+        pin_salt=salt
+    )
+    db.add(new_user)
+    db.commit()
+    return {"status": "success", "username": new_user.username}
+
+@app.put("/api/admin/users/{user_id}")
+def update_admin_user(request: Request, user_id: int, user_in: AdminUserUpdate, db: Session = Depends(get_db)):
+    verify_local_network_access(request)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+        
+    if user_in.username:
+        conflict = db.query(User).filter(User.username == user_in.username, User.id != user_id).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail="Username already exists.")
+        user.username = user_in.username
+        
+    if user_in.subdomain:
+        conflict = db.query(User).filter(User.subdomain == user_in.subdomain, User.id != user_id).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail="Subdomain already mapped to another user.")
+        user.subdomain = user_in.subdomain
+        
+    if user_in.pin:
+        hashed, salt = database.hash_pin(user_in.pin)
+        user.pin_hash = hashed
+        user.pin_salt = salt
+        
+    db.commit()
+    return {"status": "success"}
+
+@app.post("/api/admin/users/{user_id}/unlock")
+def unlock_admin_user(request: Request, user_id: int, db: Session = Depends(get_db)):
+    verify_local_network_access(request)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    user.failed_attempts = 0
+    user.lockout_until = None
+    db.commit()
+    return {"status": "success"}
+
+@app.delete("/api/admin/users/{user_id}")
+def delete_admin_user(request: Request, user_id: int, db: Session = Depends(get_db)):
+    verify_local_network_access(request)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+        
+    db.delete(user)
+    db.commit()
+    return {"status": "success"}
 
 # ----------------------------------------------------
 # Static Assets Routing & Frontend Views

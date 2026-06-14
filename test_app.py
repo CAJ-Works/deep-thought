@@ -113,5 +113,23 @@ class DeepThoughtTestCase(unittest.TestCase):
         req3 = MockRequest("localhost:8000")
         self.assertEqual(get_subdomain(req3), "chris")
 
+    def test_ip_subdomain_extraction_bypass(self):
+        class MockRequest:
+            def __init__(self, host):
+                self.headers = {"host": host}
+        req = MockRequest("127.0.0.1:8000")
+        self.assertEqual(get_subdomain(req), "chris")
+
+    def test_lan_ip_validation(self):
+        from main import is_private_ip
+        self.assertTrue(is_private_ip("127.0.0.1"))
+        self.assertTrue(is_private_ip("10.0.0.1"))
+        self.assertTrue(is_private_ip("192.168.1.1"))
+        self.assertTrue(is_private_ip("172.16.0.1"))
+        self.assertTrue(is_private_ip("::1"))
+        
+        self.assertFalse(is_private_ip("8.8.8.8"))
+        self.assertFalse(is_private_ip("142.250.190.46"))
+
 if __name__ == "__main__":
     unittest.main()

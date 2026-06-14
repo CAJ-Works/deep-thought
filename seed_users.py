@@ -13,6 +13,7 @@ def seed_users():
             hashed, salt = hash_pin("1234")  # Default PIN: 1234
             chris = User(
                 username="chris",
+                subdomain="chris",
                 pin_hash=hashed,
                 pin_salt=salt
             )
@@ -27,6 +28,7 @@ def seed_users():
             hashed, salt = hash_pin("5678")  # Default PIN: 5678
             brandon = User(
                 username="brandon",
+                subdomain="brandon",
                 pin_hash=hashed,
                 pin_salt=salt
             )

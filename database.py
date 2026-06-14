@@ -1,7 +1,7 @@
 import datetime
 import os
 import hashlib
-from sqlalchemy import create_engine, Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from config import DATABASE_URL
 
@@ -19,6 +19,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
+    subdomain = Column(String, unique=True, index=True, nullable=True)
     pin_hash = Column(String, nullable=False)
     pin_salt = Column(String, nullable=False)
     failed_attempts = Column(Integer, default=0)
@@ -172,6 +173,20 @@ def get_db():
 # Helper to initialize database and tables
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # Programmatically add subdomain column if it doesn't exist (since SQLite metadata doesn't do migration)
+    db = SessionLocal()
+    try:
+        db.execute(text("ALTER TABLE users ADD COLUMN subdomain TEXT"))
+        db.commit()
+        # Set default values: subdomain = username
+        db.execute(text("UPDATE users SET subdomain = username"))
+        db.commit()
+        print("Database migrated: added 'subdomain' column to 'users' table.")
+    except Exception as e:
+        # Column already exists, ignore
+        pass
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     print("Initializing SQLite Database...")
