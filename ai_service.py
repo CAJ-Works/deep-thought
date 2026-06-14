@@ -10,7 +10,10 @@ import config
 from config import (
     LM_STUDIO_BASE_URL,
     LM_STUDIO_MODEL,
-    GEMINI_API_KEY
+    GEMINI_API_KEY,
+    USE_LOCAL_WHISPER,
+    LOCAL_WHISPER_MODEL_PATH,
+    WHISPER_THREADS
 )
 
 # Configure logging
@@ -22,14 +25,42 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 class AIService:
-    @staticmethod
-    def transcribe_audio(file_path: str) -> str:
+    _whisper_model = None
+
+    @classmethod
+    def get_whisper_model(cls):
+        if cls._whisper_model is None:
+            if not os.path.exists(LOCAL_WHISPER_MODEL_PATH):
+                logger.error(f"Local Whisper model not found at {LOCAL_WHISPER_MODEL_PATH}")
+                raise FileNotFoundError(f"Local Whisper model file not found: {LOCAL_WHISPER_MODEL_PATH}")
+            
+            logger.info(f"Loading local Whisper model from {LOCAL_WHISPER_MODEL_PATH} with {WHISPER_THREADS} threads...")
+            from pywhispercpp.model import Model
+            cls._whisper_model = Model(LOCAL_WHISPER_MODEL_PATH, n_threads=WHISPER_THREADS)
+            logger.info("Local Whisper model loaded successfully.")
+        return cls._whisper_model
+
+    @classmethod
+    def transcribe_audio(cls, file_path: str) -> str:
         """
-        Transcribes audio file using Gemini API or returns a placeholder.
+        Transcribes audio file using local Whisper model or falls back to Gemini API.
         """
+        if USE_LOCAL_WHISPER:
+            try:
+                model = cls.get_whisper_model()
+                logger.info(f"Transcribing audio file {file_path} using local Whisper...")
+                segments = model.transcribe(file_path)
+                transcription = " ".join([seg.text for seg in segments]).strip()
+                logger.info(f"Local transcription successful: '{transcription}'")
+                return transcription
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                logger.error(f"Local Whisper transcription failed: {e}. Falling back to Gemini...")
+        
         if not GEMINI_API_KEY:
             logger.warning("GEMINI_API_KEY not configured. Cannot perform transcription.")
-            return "[Transcription Error: Gemini API key not configured]"
+            return "[Transcription Error: Gemini API key not configured and local Whisper failed]"
         
         try:
             logger.info(f"Uploading audio file {file_path} to Gemini...")
