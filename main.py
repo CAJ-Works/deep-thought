@@ -164,7 +164,7 @@ def login(
             httponly=True,
             secure=False,  # Set to True if serving HTTPS via Cloudflare
             samesite="lax",
-            expires=expires_at
+            expires=expires_at.replace(tzinfo=datetime.timezone.utc)
         )
         
         return {"status": "success", "username": user.username}
