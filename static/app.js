@@ -25,6 +25,7 @@ let canvasEdgeColor = "rgba(108, 92, 231, 0.25)";
 // Geolocation state
 let userCoordinates = null;
 let isLocationActive = false;
+let processingPollInterval = null;
 
 // ----------------------------------------------------
 // Page Initialization & Auth Checks
@@ -83,6 +84,10 @@ async function checkAuthStatus() {
 function showAuthScreen() {
     document.getElementById("auth-screen").style.display = "flex";
     document.getElementById("app-workspace").style.display = "none";
+    if (processingPollInterval) {
+        clearInterval(processingPollInterval);
+        processingPollInterval = null;
+    }
 }
 
 function showWorkspace(username, theme, location_enabled) {
@@ -558,6 +563,21 @@ function renderTimeline() {
     });
     
     document.getElementById("unprocessed-count").textContent = unprocessedCount;
+    
+    // Auto-polling for processing/enrichment background tasks
+    if (unprocessedCount > 0) {
+        if (!processingPollInterval) {
+            processingPollInterval = setInterval(async () => {
+                await fetchThoughts();
+                await fetchGraphData();
+            }, 3000); // Check status every 3 seconds
+        }
+    } else {
+        if (processingPollInterval) {
+            clearInterval(processingPollInterval);
+            processingPollInterval = null;
+        }
+    }
 }
 
 function populateCategoryFilter() {
