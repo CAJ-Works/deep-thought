@@ -64,26 +64,24 @@
 
     <!-- 2. Core App Dashboard (Hidden by default until authenticated) -->
     <div id="app-workspace" class="app-container" style="display: none;">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="logo-area">
-                <div class="logo-icon"></div>
-                <h1>Deep Thought <span class="workspace-badge" id="user-badge">chris</span></h1>
-            </div>
-            <div class="header-right">
-                <button id="logout-btn" class="btn btn-secondary btn-small" title="Lock Console" style="padding: 6px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px;">
-                    <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                </button>
-            </div>
-        </header>
+        <!-- Page 1: Capture View -->
+        <div class="capture-page">
+            <header class="app-header">
+                <div class="logo-area">
+                    <div class="logo-icon"></div>
+                    <h1>Deep Thought <span class="workspace-badge" id="user-badge">chris</span></h1>
+                </div>
+                <div class="header-right">
+                    <button id="logout-btn" class="btn btn-secondary btn-small" title="Lock Console" style="padding: 6px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px;">
+                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </header>
 
-        <!-- Main Grid Area -->
-        <main class="app-main">
-            <!-- Left Side Panel: Capture & Feed -->
-            <section class="left-panel">
+            <div class="capture-area-wrapper">
                 <!-- Thought Capture Card -->
                 <div class="capture-card">
                     <h2>Your Thought</h2>
@@ -129,49 +127,47 @@
                 <div class="unread-metric-bar" id="unread-metric-bar">
                     <span class="metric-item"><span class="metric-bullet"></span><span id="unprocessed-count">0</span> unprocessed thoughts</span>
                 </div>
+            </div>
+        </div>
 
-                <!-- Thought Timeline Feed -->
-                <div class="timeline-container">
-                    <div class="timeline-header">
-                        <h2>Thoughts</h2>
-                        <div class="filter-controls">
-                            <input type="text" id="search-input" placeholder="Search content...">
-                            <select id="category-filter">
-                                <option value="">All Categories</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="timeline-list" id="timeline-list">
-                        <div class="loading-spinner">Loading library...</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Right Side Panel: Interactive Graph & Integration Status -->
-            <section class="right-panel">
-                <!-- Semantic Connection Diagram -->
-                <div class="card graph-card">
-                    <div class="card-header">
-                        <h2>Thematic Graph Network</h2>
-                        <button id="reset-graph-btn" class="btn btn-small">Recenter</button>
-                    </div>
-                    <p class="card-subtitle">Local models index entries to automatically map thematic paths and turtle-to-alligator links.</p>
-                    
-                    <div class="canvas-container">
-                        <canvas id="network-canvas"></canvas>
-                        <div class="graph-legend">
-                            <span class="legend-item"><span class="legend-color node-general"></span>General</span>
-                            <span class="legend-item"><span class="legend-color node-research"></span>Research</span>
-                            <span class="legend-item"><span class="legend-color node-idea"></span>Idea</span>
-                            <span class="legend-item"><span class="legend-color node-todo"></span>To-Do</span>
-                        </div>
+        <!-- Page 2: History & Graph View -->
+        <div class="history-page">
+            <!-- Thought Timeline Feed -->
+            <div class="timeline-container">
+                <div class="timeline-header">
+                    <h2>Thoughts</h2>
+                    <div class="filter-controls">
+                        <input type="text" id="search-input" placeholder="Search content...">
+                        <select id="category-filter">
+                            <option value="">All Categories</option>
+                        </select>
                     </div>
                 </div>
 
+                <div class="timeline-list" id="timeline-list">
+                    <div class="loading-spinner">Loading library...</div>
+                </div>
+            </div>
 
-            </section>
-        </main>
+            <!-- Semantic Connection Diagram -->
+            <div class="card graph-card">
+                <div class="card-header">
+                    <h2>Thematic Graph Network</h2>
+                    <button id="reset-graph-btn" class="btn btn-small">Recenter</button>
+                </div>
+                <p class="card-subtitle">Local models index entries to automatically map thematic paths and turtle-to-alligator links.</p>
+                
+                <div class="canvas-container">
+                    <canvas id="network-canvas"></canvas>
+                    <div class="graph-legend">
+                        <span class="legend-item"><span class="legend-color node-general"></span>General</span>
+                        <span class="legend-item"><span class="legend-color node-research"></span>Research</span>
+                        <span class="legend-item"><span class="legend-color node-idea"></span>Idea</span>
+                        <span class="legend-item"><span class="legend-color node-todo"></span>To-Do</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Detailed Modal Overlay -->

@@ -269,8 +269,10 @@ body {
 
 /* App Container Layout */
 .app-container {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-rows: auto auto 1fr;
+    gap: 24px;
     height: 100vh;
     max-width: 1600px;
     margin: 0 auto;
@@ -366,28 +368,16 @@ body {
     box-shadow: 0 0 8px var(--success-color);
 }
 
-/* Main Workspace */
-.app-main {
-    display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
-    gap: 24px;
-    flex: 1;
-    min-height: 0;
+.capture-page, .history-page {
+    display: contents;
 }
 
-/* Panel Layouts */
-.left-panel {
+.capture-area-wrapper {
+    grid-column: 1;
+    grid-row: 2;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    min-height: 0;
-}
-
-.right-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-height: 0;
 }
 
 /* Card base */
@@ -643,7 +633,8 @@ textarea:focus {
 
 /* Timeline Timeline */
 .timeline-container {
-    flex: 1;
+    grid-column: 1;
+    grid-row: 3;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -814,7 +805,8 @@ textarea:focus {
 
 /* Graph Canvas layout */
 .graph-card {
-    flex: 1;
+    grid-column: 2;
+    grid-row: 2 / 4;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -1046,27 +1038,85 @@ textarea:focus {
 
 @media(max-width: 600px) {
     .app-container {
-        padding: 10px 8px;
+        display: block;
+        height: 100vh;
+        overflow-y: scroll;
+        scroll-snap-type: y mandatory;
+        scroll-behavior: smooth;
+        padding: 0;
     }
+    
+    .capture-page {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        min-height: 100vh;
+        width: 100%;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        box-sizing: border-box;
+        padding: 12px 10px;
+        justify-content: flex-start;
+        gap: 12px;
+    }
+
+    .history-page {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        width: 100%;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        box-sizing: border-box;
+        padding: 20px 10px 40px 10px;
+        gap: 20px;
+    }
+
+    .capture-area-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+    }
+
+    .timeline-container, .graph-card {
+        grid-column: auto;
+        grid-row: auto;
+        flex: none;
+        width: 100%;
+        height: auto;
+    }
+
+    .timeline-list {
+        overflow-y: visible;
+        max-height: none;
+    }
+
     .app-header {
         padding: 10px 4px 15px 4px;
         margin-bottom: 12px;
     }
+
     .logo-area h1 {
         font-size: 1.2rem;
         white-space: nowrap;
     }
+
     .card {
         padding: 14px;
         border-radius: 12px;
     }
+
     .capture-controls {
         gap: 8px;
     }
+
     .btn {
         padding: 8px 14px;
         font-size: 0.85rem;
     }
+
     .location-widget {
         padding: 8px 10px;
         font-size: 0.78rem;
