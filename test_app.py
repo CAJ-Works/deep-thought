@@ -131,5 +131,17 @@ class DeepThoughtTestCase(unittest.TestCase):
         self.assertFalse(is_private_ip("8.8.8.8"))
         self.assertFalse(is_private_ip("142.250.190.46"))
 
+    def test_theme_and_pin_settings(self):
+        user = self.db.query(User).filter(User.username == "chris").first()
+        # Check default theme
+        self.assertEqual(user.theme, "default")
+        
+        # Modify theme
+        user.theme = "cyberpunk"
+        self.db.commit()
+        
+        user_db = self.db.query(User).filter(User.username == "chris").first()
+        self.assertEqual(user_db.theme, "cyberpunk")
+
 if __name__ == "__main__":
     unittest.main()

@@ -19,6 +19,8 @@ let selectedNode = null;
 let isDraggingNode = false;
 let canvasScale = 1.0;
 let canvasOffset = { x: 0, y: 0 };
+let canvasTextColor = "#f1f3f9";
+let canvasEdgeColor = "rgba(108, 92, 231, 0.25)";
 
 // Geolocation state
 let userCoordinates = null;
@@ -29,6 +31,10 @@ let isLocationActive = false;
 // ----------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Apply cached theme immediately on load
+    const cachedTheme = localStorage.getItem("deep_thought_theme") || "default";
+    applyTheme(cachedTheme);
+
     detectSubdomain();
     checkAuthStatus();
     setupAuthKeypad();
@@ -36,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupFilterEvents();
     setupModalEvents();
     setupGraphEvents();
+    setupSettingsEvents();
 });
 
 function detectSubdomain() {
@@ -64,7 +71,7 @@ async function checkAuthStatus() {
         const response = await fetch("/api/auth/me");
         if (response.ok) {
             const data = await response.json();
-            showWorkspace(data.username);
+            showWorkspace(data.username, data.theme, data.location_enabled);
         } else {
             showAuthScreen();
         }
@@ -78,11 +85,54 @@ function showAuthScreen() {
     document.getElementById("app-workspace").style.display = "none";
 }
 
-function showWorkspace(username) {
+function showWorkspace(username, theme, location_enabled) {
     document.getElementById("auth-screen").style.display = "none";
-    document.getElementById("app-workspace").style.display = "flex";
+    document.getElementById("app-workspace").style.display = "";
     document.getElementById("user-badge").textContent = username;
+    applyTheme(theme || "default");
+    
+    if (location_enabled !== undefined) {
+        localStorage.setItem("deep_thought_location_enabled", location_enabled);
+    }
+    applyLocationPreference();
+    
     loadDashboard();
+}
+
+function applyLocationPreference() {
+    const enabled = localStorage.getItem("deep_thought_location_enabled") === "true";
+    const locToggle = document.getElementById("location-toggle");
+    
+    if (enabled) {
+        if ("geolocation" in navigator) {
+            document.getElementById("location-status").textContent = "Location ⏳";
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userCoordinates = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude
+                    };
+                    isLocationActive = true;
+                    if (locToggle) locToggle.classList.add("active");
+                    document.getElementById("location-status").textContent = "Location ✅";
+                },
+                (error) => {
+                    isLocationActive = false;
+                    if (locToggle) locToggle.classList.remove("active");
+                    document.getElementById("location-status").textContent = "Location ❌";
+                }
+            );
+        } else {
+            document.getElementById("location-status").textContent = "Location ❌";
+        }
+    } else {
+        userCoordinates = null;
+        isLocationActive = false;
+        if (locToggle) {
+            locToggle.classList.remove("active");
+            document.getElementById("location-status").textContent = "Location ❌";
+        }
+    }
 }
 
 // ----------------------------------------------------
@@ -147,7 +197,7 @@ async function submitPinLogin() {
             const data = await response.json();
             currentPIN = "";
             updatePinDots();
-            showWorkspace(data.username);
+            showWorkspace(data.username, data.theme, data.location_enabled);
         } else {
             const data = await response.json();
             currentPIN = "";
@@ -474,7 +524,7 @@ function renderTimeline() {
                     <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     </svg>
-                    ${t.location_name || "Self-hosted Mini"}
+                    ${t.latitude && t.longitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${t.latitude},${t.longitude}" target="_blank" class="location-link" title="Open in Google Maps">${t.location_name || "Captured Location"}</a>` : (t.location_name || "Self-hosted Mini")}
                 </span>
                 <div class="card-actions">
                     <span class="action-link reprocess-action" data-id="${t.id}" title="Re-run enrichment">Reprocess</span>
@@ -483,9 +533,9 @@ function renderTimeline() {
             </div>
         `;
         
-        // Modal trigger on card click (except click on delete action)
+        // Modal trigger on card click (except click on delete/reprocess/location actions)
         card.addEventListener("click", (e) => {
-            if (e.target.classList.contains("action-link")) return;
+            if (e.target.classList.contains("action-link") || e.target.classList.contains("location-link") || e.target.closest(".location-link")) return;
             openThoughtDetails(t.id);
         });
         
@@ -601,11 +651,35 @@ async function openThoughtDetails(thought_id) {
             `;
         }
         
+        let locationHtml = "";
+        if (data.location_name || (data.latitude && data.longitude)) {
+            const displayLoc = data.location_name || "Self-hosted Mini";
+            const mapsLink = data.latitude && data.longitude ? 
+                ` (<a href="https://www.google.com/maps/search/?api=1&query=${data.latitude},${data.longitude}" target="_blank" class="location-link">Open in Google Maps</a>)` : "";
+            const coordsStr = data.latitude && data.longitude ? 
+                `<br><span style="font-size: 0.8rem; color: var(--text-muted);">Coordinates: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}</span>` : "";
+                
+            locationHtml = `
+                <div class="detail-section">
+                    <h4>Captured Location</h4>
+                    <p class="detail-text" style="font-size: 0.9rem;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle; margin-right: 4px;">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <span>${displayLoc}</span>${mapsLink}${coordsStr}
+                    </p>
+                </div>
+            `;
+        }
+        
         body.innerHTML = `
             <div class="detail-section">
                 <h4>Raw Captured Thought</h4>
                 <p class="detail-text">${data.content}</p>
             </div>
+            
+            ${locationHtml}
             
             <div class="detail-section">
                 <h4>AI Structured Summary</h4>
@@ -751,7 +825,7 @@ function initGraph() {
             ctx.beginPath();
             ctx.moveTo(n1.x, n1.y);
             ctx.lineTo(n2.x, n2.y);
-            ctx.strokeStyle = "rgba(108, 92, 231, 0.25)";
+            ctx.strokeStyle = canvasEdgeColor;
             ctx.lineWidth = 1.5;
             ctx.stroke();
         });
@@ -774,7 +848,7 @@ function initGraph() {
             ctx.shadowBlur = 0; // Reset
             
             // Label
-            ctx.fillStyle = "#f1f3f9";
+            ctx.fillStyle = canvasTextColor;
             ctx.font = "10px Plus Jakarta Sans";
             ctx.textAlign = "center";
             ctx.fillText(node.label, node.x, node.y - node.size - 4);
@@ -837,4 +911,121 @@ function setupGraphEvents() {
         });
         fetchGraphData();
     });
+}
+
+function applyTheme(themeName) {
+    if (themeName && themeName !== "default") {
+        document.body.setAttribute("data-theme", themeName);
+    } else {
+        document.body.removeAttribute("data-theme");
+    }
+    localStorage.setItem("deep_thought_theme", themeName || "default");
+    
+    document.querySelectorAll(".theme-option").forEach(opt => {
+        if (opt.getAttribute("data-theme") === (themeName || "default")) {
+            opt.classList.add("active");
+        } else {
+            opt.classList.remove("active");
+        }
+    });
+
+    // Update dynamic canvas theme-derived colors after styles are applied
+    setTimeout(() => {
+        const bodyStyles = getComputedStyle(document.body);
+        canvasTextColor = bodyStyles.getPropertyValue("--text-primary").trim() || "#f1f3f9";
+        canvasEdgeColor = bodyStyles.getPropertyValue("--border-color-hover").trim() || "rgba(108, 92, 231, 0.25)";
+    }, 50);
+}
+
+function setupSettingsEvents() {
+    const settingsBtn = document.getElementById("settings-btn");
+    const settingsModal = document.getElementById("settings-modal");
+    const closeSettingsBtn = document.getElementById("close-settings");
+    const saveSettingsBtn = document.getElementById("save-settings-btn");
+    
+    const newPinInput = document.getElementById("new-pin-input");
+    const confirmPinInput = document.getElementById("confirm-pin-input");
+    const pinError = document.getElementById("settings-pin-error");
+    
+    if (settingsBtn) {
+        settingsBtn.addEventListener("click", () => {
+            newPinInput.value = "";
+            confirmPinInput.value = "";
+            pinError.textContent = "";
+            
+            const currentTheme = localStorage.getItem("deep_thought_theme") || "default";
+            applyTheme(currentTheme);
+            
+            // Sync location preference checkbox
+            const locCheckbox = document.getElementById("settings-location-enabled");
+            if (locCheckbox) {
+                locCheckbox.checked = localStorage.getItem("deep_thought_location_enabled") === "true";
+            }
+            
+            settingsModal.classList.add("active");
+        });
+    }
+    
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener("click", () => {
+            settingsModal.classList.remove("active");
+        });
+    }
+    
+    document.querySelectorAll(".theme-option").forEach(opt => {
+        opt.addEventListener("click", () => {
+            const selectedTheme = opt.getAttribute("data-theme");
+            applyTheme(selectedTheme);
+        });
+    });
+    
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener("click", async () => {
+            pinError.textContent = "";
+            const newPin = newPinInput.value.trim();
+            const confirmPin = confirmPinInput.value.trim();
+            const selectedTheme = localStorage.getItem("deep_thought_theme") || "default";
+            
+            // Read default location preference checkbox status
+            const locCheckbox = document.getElementById("settings-location-enabled");
+            const locationEnabled = locCheckbox ? locCheckbox.checked : false;
+            
+            const payload = { 
+                theme: selectedTheme,
+                location_enabled: locationEnabled
+            };
+            
+            if (newPin || confirmPin) {
+                if (newPin !== confirmPin) {
+                    pinError.textContent = "PINs do not match.";
+                    return;
+                }
+                if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+                    pinError.textContent = "PIN must be exactly 4 digits.";
+                    return;
+                }
+                payload.pin = newPin;
+            }
+            
+            try {
+                const response = await fetch("/api/user/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    alert("Settings updated successfully!");
+                    localStorage.setItem("deep_thought_location_enabled", locationEnabled);
+                    applyLocationPreference();
+                    settingsModal.classList.remove("active");
+                } else {
+                    const data = await response.json();
+                    pinError.textContent = data.detail || "Failed to save settings.";
+                }
+            } catch (e) {
+                pinError.textContent = "Network error. Failed to save settings.";
+            }
+        });
+    }
 }

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import config
 import database
-from database import get_db, User, UserSession, Thought, ThoughtLink, WebReference, verify_pin
+from database import get_db, User, UserSession, Thought, ThoughtLink, WebReference, verify_pin, hash_pin
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -64,6 +64,11 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 class LoginRequest(BaseModel):
     pin: str
     remember: bool = False
+
+class SettingsUpdateRequest(BaseModel):
+    pin: Optional[str] = None
+    theme: Optional[str] = None
+    location_enabled: Optional[bool] = None
 
 class AdminUserCreate(BaseModel):
     username: str
@@ -206,7 +211,7 @@ def login(
             expires=expires_at.replace(tzinfo=datetime.timezone.utc)
         )
         
-        return {"status": "success", "username": user.username}
+        return {"status": "success", "username": user.username, "theme": user.theme, "location_enabled": user.location_enabled}
     else:
         # Increment failed login attempts
         user.failed_attempts += 1
@@ -226,7 +231,26 @@ def login(
 
 @app.get("/api/auth/me")
 def get_me(user: User = Depends(get_current_user)):
-    return {"authenticated": True, "username": user.username}
+    return {"authenticated": True, "username": user.username, "theme": user.theme, "location_enabled": user.location_enabled}
+
+@app.post("/api/user/settings")
+def update_settings(
+    settings_in: SettingsUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if settings_in.theme is not None:
+        user.theme = settings_in.theme
+    if settings_in.location_enabled is not None:
+        user.location_enabled = settings_in.location_enabled
+    if settings_in.pin is not None:
+        if len(settings_in.pin) != 4 or not settings_in.pin.isdigit():
+            raise HTTPException(status_code=400, detail="PIN must be exactly 4 digits.")
+        hashed, salt = hash_pin(settings_in.pin)
+        user.pin_hash = hashed
+        user.pin_salt = salt
+    db.commit()
+    return {"status": "success", "theme": user.theme, "location_enabled": user.location_enabled}
 
 @app.post("/api/auth/logout")
 def logout(response: Response, request: Request, db: Session = Depends(get_db)):

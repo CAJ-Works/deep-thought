@@ -24,6 +24,8 @@ class User(Base):
     pin_salt = Column(String, nullable=False)
     failed_attempts = Column(Integer, default=0)
     lockout_until = Column(DateTime, nullable=True)
+    theme = Column(String, default="default", nullable=False)
+    location_enabled = Column(Boolean, default=False, nullable=False)
     
     # Relationships
     thoughts = relationship("Thought", back_populates="user", cascade="all, delete-orphan")
@@ -184,6 +186,28 @@ def init_db():
         print("Database migrated: added 'subdomain' column to 'users' table.")
     except Exception as e:
         # Column already exists, ignore
+        pass
+
+    # Programmatically add theme column if it doesn't exist
+    try:
+        db.execute(text("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'default'"))
+        db.commit()
+        db.execute(text("UPDATE users SET theme = 'default' WHERE theme IS NULL"))
+        db.commit()
+        print("Database migrated: added 'theme' column to 'users' table.")
+    except Exception as e:
+        # Column already exists or failed, ignore
+        pass
+
+    # Programmatically add location_enabled column if it doesn't exist
+    try:
+        db.execute(text("ALTER TABLE users ADD COLUMN location_enabled BOOLEAN DEFAULT 0"))
+        db.commit()
+        db.execute(text("UPDATE users SET location_enabled = 0 WHERE location_enabled IS NULL"))
+        db.commit()
+        print("Database migrated: added 'location_enabled' column to 'users' table.")
+    except Exception as e:
+        # Column already exists or failed, ignore
         pass
     finally:
         db.close()

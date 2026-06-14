@@ -8,6 +8,7 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+      - ./static:/app/static:ro
       - /Users/ms1/Library/Application Support/pywhispercpp/models:/app/models:ro
     restart: unless-stopped
     extra_hosts:

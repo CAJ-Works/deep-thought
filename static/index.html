@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=1.3">
+    <link rel="stylesheet" href="/static/styles.css?v=1.6">
 </head>
 <body>
     <!-- 1. Authentication PIN Overlay Screen -->
@@ -71,7 +71,13 @@
                     <div class="logo-icon"></div>
                     <h1>Deep Thought <span class="workspace-badge" id="user-badge">chris</span></h1>
                 </div>
-                <div class="header-right">
+                <div class="header-right" style="gap: 8px;">
+                    <button id="settings-btn" class="btn btn-secondary btn-small" title="Console Settings" style="padding: 6px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px;">
+                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
                     <button id="logout-btn" class="btn btn-secondary btn-small" title="Lock Console" style="padding: 6px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px;">
                         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -183,6 +189,76 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=1.3"></script>
+    <!-- Settings Modal Overlay -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Console Settings</h3>
+                <button class="close-modal-btn" id="close-settings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>Change PIN</h4>
+                    <p class="settings-subtitle">Enter a new 4-digit PIN to secure your access console.</p>
+                    <div class="pin-input-group">
+                        <input type="password" id="new-pin-input" class="settings-input" pattern="\d{4}" maxlength="4" placeholder="New PIN" autocomplete="new-password">
+                        <input type="password" id="confirm-pin-input" class="settings-input" pattern="\d{4}" maxlength="4" placeholder="Confirm PIN" autocomplete="new-password">
+                    </div>
+                    <div class="settings-error-msg" id="settings-pin-error"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h4>Location Services</h4>
+                    <p class="settings-subtitle">Configure geolocation preferences for thought capture.</p>
+                    <label class="checkbox-label" style="justify-content: flex-start; margin-top: 8px;">
+                        <input type="checkbox" id="settings-location-enabled">
+                        <span class="checkbox-custom"></span>
+                        <span>Enable geolocation tagging by default</span>
+                    </label>
+                </div>
+
+                <div class="settings-section">
+                    <h4>Color Theme</h4>
+                    <p class="settings-subtitle">Select your workspace style preset.</p>
+                    <div class="theme-grid">
+                        <div class="theme-option active" data-theme="default">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #6c5ce7, #00cec9);"></span>
+                            Midnight Eclipse
+                        </div>
+                        <div class="theme-option" data-theme="cyberpunk">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #ff007f, #00f3ff);"></span>
+                            Cyberpunk Neon
+                        </div>
+                        <div class="theme-option" data-theme="nordic">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #1d4ed8, #0f766e);"></span>
+                            Nordic Frost
+                        </div>
+                        <div class="theme-option" data-theme="forest">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #10b981, #d97706);"></span>
+                            Forest Sage
+                        </div>
+                        <div class="theme-option" data-theme="sunset">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #d84315, #b58900);"></span>
+                            Solar Sepia
+                        </div>
+                        <div class="theme-option" data-theme="royal">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #a55eea, #ff7675);"></span>
+                            Royal Amethyst
+                        </div>
+                        <div class="theme-option" data-theme="tokyo">
+                            <span class="theme-preview" style="background: linear-gradient(135deg, #39ff14, #00cec9);"></span>
+                            Tokyo Lime
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-footer">
+                    <button id="save-settings-btn" class="btn btn-primary">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js?v=1.6"></script>
 </body>
 </html>
