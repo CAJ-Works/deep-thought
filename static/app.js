@@ -320,6 +320,12 @@ function setupCaptureEvents() {
 // ----------------------------------------------------
 
 async function submitTextThought() {
+    // If we are currently recording audio, stop it and save it!
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+        await toggleVoiceRecording();
+        return;
+    }
+
     const textarea = document.getElementById("thought-input");
     const content = textarea.value.strip ? textarea.value.strip() : textarea.value.trim();
     if (!content) return;
@@ -348,13 +354,18 @@ async function submitTextThought() {
 
 async function toggleVoiceRecording() {
     const voiceBtn = document.getElementById("voice-btn");
-    const voiceText = document.getElementById("voice-btn-text");
+    const submitBtnSpan = document.querySelector("#submit-btn span") || document.getElementById("submit-btn");
+    const textarea = document.getElementById("thought-input");
     
     if (mediaRecorder && mediaRecorder.state === "recording") {
         // Stop recording
         mediaRecorder.stop();
         voiceBtn.classList.remove("recording");
-        if (voiceText) voiceText.textContent = "Voice Note";
+        if (submitBtnSpan) submitBtnSpan.textContent = "Capture";
+        if (textarea) {
+            textarea.disabled = false;
+            textarea.placeholder = "Enter a thought, project concept, or research link...";
+        }
         stopWaveformVisualizer();
         return;
     }
@@ -381,7 +392,12 @@ async function toggleVoiceRecording() {
         
         mediaRecorder.start();
         voiceBtn.classList.add("recording");
-        if (voiceText) voiceText.textContent = "Recording...";
+        if (submitBtnSpan) submitBtnSpan.textContent = "Save Voice";
+        if (textarea) {
+            textarea.disabled = true;
+            textarea.value = "";
+            textarea.placeholder = "[Recording voice note... Click 'Save Voice' or the mic icon to finish]";
+        }
         document.getElementById("waveform-container").classList.add("active");
         
         startWaveformVisualizer(stream);
@@ -400,15 +416,38 @@ async function uploadVoiceThought(audioBlob) {
         formData.append("location_name", "Captured coordinates");
     }
     
-    // Display visual loading spinner
+    const submitBtn = document.getElementById("submit-btn");
+    const submitBtnSpan = document.querySelector("#submit-btn span") || submitBtn;
+    const voiceBtn = document.getElementById("voice-btn");
+    const textarea = document.getElementById("thought-input");
+    
+    // Disable inputs and show status during upload
+    if (submitBtn) submitBtn.disabled = true;
+    if (submitBtnSpan) submitBtnSpan.textContent = "Saving...";
+    if (voiceBtn) voiceBtn.disabled = true;
+    if (textarea) {
+        textarea.disabled = true;
+        textarea.value = "";
+        textarea.placeholder = "[Transcribing and saving voice note, please wait...]";
+    }
+    
     const timeline = document.getElementById("timeline-list");
-    timeline.innerHTML = `<div class="loading-spinner">Transcribing voice thought via Gemini...</div>`;
+    timeline.innerHTML = `<div class="loading-spinner">Transcribing voice thought...</div>`;
     
     try {
         const response = await fetch("/api/thoughts/voice", {
             method: "POST",
             body: formData
         });
+        
+        // Restore controls
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtnSpan) submitBtnSpan.textContent = "Capture";
+        if (voiceBtn) voiceBtn.disabled = false;
+        if (textarea) {
+            textarea.disabled = false;
+            textarea.placeholder = "Enter a thought, project concept, or research link...";
+        }
         
         if (response.ok) {
             loadDashboard();
@@ -419,6 +458,13 @@ async function uploadVoiceThought(audioBlob) {
         }
     } catch (e) {
         alert("Failed to upload audio file.");
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtnSpan) submitBtnSpan.textContent = "Capture";
+        if (voiceBtn) voiceBtn.disabled = false;
+        if (textarea) {
+            textarea.disabled = false;
+            textarea.placeholder = "Enter a thought, project concept, or research link...";
+        }
         loadDashboard();
     }
 }
