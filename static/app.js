@@ -22,6 +22,10 @@ let canvasOffset = { x: 0, y: 0 };
 let canvasTextColor = "#f1f3f9";
 let canvasEdgeColor = "rgba(108, 92, 231, 0.25)";
 
+// Map state variables
+let thoughtMap = null;
+let mapMarkers = [];
+
 // Geolocation state
 let userCoordinates = null;
 let isLocationActive = false;
@@ -44,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupModalEvents();
     setupGraphEvents();
     setupSettingsEvents();
+    setupMapEvents();
 });
 
 function detectSubdomain() {
@@ -1048,4 +1053,148 @@ function setupSettingsEvents() {
             }
         });
     }
+}
+
+function setupMapEvents() {
+    const mapBtn = document.getElementById("map-view-btn");
+    const mapModal = document.getElementById("map-modal");
+    const closeMapBtn = document.getElementById("close-map");
+    
+    if (mapBtn) {
+        mapBtn.addEventListener("click", () => {
+            if (mapModal) {
+                mapModal.classList.add("active");
+                setTimeout(() => {
+                    initThoughtMap();
+                }, 100);
+            }
+        });
+    }
+    
+    if (closeMapBtn) {
+        closeMapBtn.addEventListener("click", () => {
+            if (mapModal) mapModal.classList.remove("active");
+        });
+    }
+    
+    if (mapModal) {
+        mapModal.addEventListener("click", (e) => {
+            if (e.target.id === "map-modal") {
+                mapModal.classList.remove("active");
+            }
+        });
+    }
+}
+
+function initThoughtMap() {
+    const mapDiv = document.getElementById("map-canvas");
+    if (!mapDiv || typeof L === 'undefined') return;
+    
+    const theme = localStorage.getItem("deep_thought_theme") || "default";
+    const isDark = ["default", "cyberpunk", "royal", "tokyo"].includes(theme);
+    const tileUrl = isDark ? 
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : 
+        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    
+    // Filter thoughts that have location coordinates
+    const mapThoughts = activeThoughts.filter(t => t.latitude && t.longitude);
+    
+    if (!thoughtMap) {
+        // Initialize map centered on the first thought with coordinates, or default center (0,0)
+        let center = [0, 0];
+        let zoom = 2;
+        if (mapThoughts.length > 0) {
+            center = [mapThoughts[0].latitude, mapThoughts[0].longitude];
+            zoom = 12;
+        }
+        
+        thoughtMap = L.map('map-canvas').setView(center, zoom);
+        L.tileLayer(tileUrl, {
+            maxZoom: 19,
+            attribution: attribution
+        }).addTo(thoughtMap);
+    } else {
+        // Update tiles layer to match the active theme
+        thoughtMap.eachLayer((layer) => {
+            if (layer instanceof L.TileLayer) {
+                thoughtMap.removeLayer(layer);
+            }
+        });
+        L.tileLayer(tileUrl, {
+            maxZoom: 19,
+            attribution: attribution
+        }).addTo(thoughtMap);
+        
+        thoughtMap.invalidateSize();
+    }
+    
+    // Clear existing markers
+    mapMarkers.forEach(m => thoughtMap.removeLayer(m));
+    mapMarkers = [];
+    
+    // Add markers for all thoughts with coordinates
+    if (mapThoughts.length > 0) {
+        const latLngs = [];
+        mapThoughts.forEach(t => {
+            const markerColor = getMarkerColorForCategory(t.category);
+            
+            // Custom divIcon matching application segment brand colors
+            const customIcon = L.divIcon({
+                html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`,
+                className: 'custom-map-pin',
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+            
+            const dateStr = new Date(t.created_at).toLocaleString();
+            const categoryBadge = t.category ? `<span class="badge badge-category" style="margin-left:0; margin-bottom:4px; display:inline-block;">${t.category}</span>` : "";
+            const snippet = t.content.length > 120 ? t.content.substring(0, 120) + "..." : t.content;
+            
+            const popupHtml = `
+                <div style="font-family: var(--font-body); color: var(--text-primary); padding: 4px; max-width: 200px;">
+                    <span style="font-size: 0.72rem; color: var(--text-secondary); display:block; margin-bottom:2px;">${dateStr}</span>
+                    ${categoryBadge}
+                    <p style="font-size: 0.82rem; margin: 4px 0 8px 0; color: var(--text-primary); line-height: 1.4; word-break: break-word;">${snippet}</p>
+                    <a href="#" class="view-thought-details-btn" data-id="${t.id}" style="font-size:0.78rem; font-weight:600; color:var(--primary-color); text-decoration:none; display:inline-block;">View Full Details &rarr;</a>
+                </div>
+            `;
+            
+            const marker = L.marker([t.latitude, t.longitude], { icon: customIcon })
+                .bindPopup(popupHtml)
+                .addTo(thoughtMap);
+                
+            // Bind click event inside map popup to close map and open thought details modal
+            marker.on('popupopen', () => {
+                const btn = document.querySelector(`.view-thought-details-btn[data-id="${t.id}"]`);
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const mapModal = document.getElementById("map-modal");
+                        if (mapModal) mapModal.classList.remove("active");
+                        openThoughtDetails(t.id);
+                    });
+                }
+            });
+            
+            mapMarkers.push(marker);
+            latLngs.push([t.latitude, t.longitude]);
+        });
+        
+        // Fit map bounds to view all markers automatically
+        if (latLngs.length > 1) {
+            thoughtMap.fitBounds(latLngs, { padding: [30, 30] });
+        } else if (latLngs.length === 1) {
+            thoughtMap.setView(latLngs[0], 13);
+        }
+    }
+}
+
+function getMarkerColorForCategory(category) {
+    if (!category) return "#a55eea"; // General segment
+    const cat = category.toLowerCase();
+    if (cat.includes("research")) return "#00cec9"; // Research segment
+    if (cat.includes("idea")) return "#fd9644"; // Idea segment
+    if (cat.includes("todo")) return "#fc5c65"; // To-Do segment
+    return "#a55eea";
 }

@@ -1508,3 +1508,48 @@ body[data-theme="tokyo"] .filter-controls select {
         gap: 10px;
     }
 }
+
+/* Leaflet Custom Glassmorphic Popups matching application themes */
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color-hover) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 12px !important;
+}
+
+.leaflet-popup-content {
+    margin: 14px 16px !important;
+    line-height: 1.4 !important;
+}
+
+.leaflet-popup-close-button {
+    color: var(--text-secondary) !important;
+    padding: 8px 8px 0 0 !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+    color: var(--text-primary) !important;
+}
+
+/* Ensure Leaflet controls match theme colors */
+.leaflet-bar {
+    border: 1px solid var(--border-color-hover) !important;
+    box-shadow: var(--shadow) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+
+.leaflet-bar a, .leaflet-bar a:hover {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.leaflet-bar a:hover {
+    background-color: var(--card-bg-hover) !important;
+}
