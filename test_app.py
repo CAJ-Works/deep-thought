@@ -211,5 +211,17 @@ class DeepThoughtTestCase(unittest.TestCase):
         self.assertEqual(thought.longitude, -74.0060)
         self.assertEqual(thought.location_name, "New York")
 
+    def test_enrichment_concurrency_guard(self):
+        from main import processing_thoughts, enrich_thought_task
+        # Add a mock thought ID to processing_thoughts to simulate it is already processing
+        processing_thoughts.add(9999)
+        try:
+            # Running the task for 9999 should return immediately without executing database queries or logging warnings
+            enrich_thought_task(9999)
+        finally:
+            # Clean up
+            processing_thoughts.discard(9999)
+
 if __name__ == "__main__":
     unittest.main()
+

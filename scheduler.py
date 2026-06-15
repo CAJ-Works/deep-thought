@@ -60,8 +60,8 @@ def start_scheduler():
     """
     scheduler = BackgroundScheduler()
     
-    # Run a check every 2 hours
-    scheduler.add_job(periodic_enrichment_job, 'interval', hours=2, id="periodic_check")
+    # Run a check every 1 minute
+    scheduler.add_job(periodic_enrichment_job, 'interval', minutes=20, id="periodic_check")
     
     # Run nightly research at 2:00 AM every day
     scheduler.add_job(nightly_deep_thinking_job, 'cron', hour=2, id="nightly_job")

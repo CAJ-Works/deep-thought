@@ -10,10 +10,7 @@ import config
 from config import (
     LM_STUDIO_BASE_URL,
     LM_STUDIO_MODEL,
-    GEMINI_API_KEY,
-    USE_LOCAL_WHISPER,
-    LOCAL_WHISPER_MODEL_PATH,
-    WHISPER_THREADS
+    GEMINI_API_KEY
 )
 
 # Configure logging
@@ -25,102 +22,6 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 class AIService:
-    _whisper_model = None
-
-    @classmethod
-    def get_whisper_model(cls):
-        if cls._whisper_model is None:
-            if not os.path.exists(LOCAL_WHISPER_MODEL_PATH):
-                logger.error(f"Local Whisper model not found at {LOCAL_WHISPER_MODEL_PATH}")
-                raise FileNotFoundError(f"Local Whisper model file not found: {LOCAL_WHISPER_MODEL_PATH}")
-            
-            logger.info(f"Loading local Whisper model from {LOCAL_WHISPER_MODEL_PATH} with {WHISPER_THREADS} threads...")
-            from pywhispercpp.model import Model
-            cls._whisper_model = Model(LOCAL_WHISPER_MODEL_PATH, n_threads=WHISPER_THREADS)
-            logger.info("Local Whisper model loaded successfully.")
-        return cls._whisper_model
-
-    @classmethod
-    def transcribe_audio(cls, file_path: str) -> str:
-        """
-        Transcribes audio file using local Whisper model or falls back to Gemini API.
-        """
-        import subprocess
-        
-        # Transcode input file to standard 16kHz, mono, 16-bit PCM WAV to ensure compatibility
-        transcoded_path = file_path + ".transcoded.wav"
-        logger.info(f"Transcoding audio payload {file_path} to standard 16kHz PCM WAV...")
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", file_path,
-            "-ar", "16000",
-            "-ac", "1",
-            "-c:a", "pcm_s16le",
-            transcoded_path
-        ]
-        
-        conversion_success = False
-        try:
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            if result.returncode == 0:
-                logger.info(f"Audio transcoded successfully to {transcoded_path}")
-                conversion_success = True
-            else:
-                logger.error(f"FFmpeg transcoding failed (code {result.returncode}): {result.stderr}")
-        except Exception as e:
-            logger.error(f"Failed to execute FFmpeg transcoding: {e}")
-            
-        active_path = transcoded_path if conversion_success else file_path
-        
-        try:
-            if USE_LOCAL_WHISPER:
-                try:
-                    model = cls.get_whisper_model()
-                    logger.info(f"Transcribing audio file {active_path} using local Whisper...")
-                    segments = model.transcribe(active_path)
-                    transcription = " ".join([seg.text for seg in segments]).strip()
-                    logger.info(f"Local transcription successful: '{transcription}'")
-                    return transcription
-                except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    logger.error(f"Local Whisper transcription failed: {e}. Falling back to Gemini...")
-            
-            if not GEMINI_API_KEY:
-                logger.warning("GEMINI_API_KEY not configured. Cannot perform transcription.")
-                return "[Transcription Error: Gemini API key not configured and local Whisper failed]"
-            
-            try:
-                logger.info(f"Uploading audio file {active_path} to Gemini...")
-                audio_file = genai.upload_file(path=active_path)
-                
-                logger.info("Generating transcription with Gemini 1.5 Flash...")
-                model = genai.GenerativeModel("gemini-1.5-flash")
-                response = model.generate_content([
-                    "Please transcribe this audio recording into clean text. If the audio is empty or has only noise, return an empty string.",
-                    audio_file
-                ])
-                
-                # Clean up the file on Google's servers
-                try:
-                    audio_file.delete()
-                except Exception as e:
-                    logger.warning(f"Failed to delete uploaded audio file: {e}")
-                    
-                transcription = response.text.strip()
-                logger.info(f"Transcription successful: '{transcription}'")
-                return transcription
-            except Exception as e:
-                logger.error(f"Error during audio transcription: {e}")
-                return f"[Transcription Failed: {str(e)}]"
-        finally:
-            # Clean up the transcoded temporary file if it was created
-            if conversion_success and os.path.exists(transcoded_path):
-                try:
-                    os.remove(transcoded_path)
-                    logger.info(f"Cleaned up transcoded file: {transcoded_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to remove transcoded file: {e}")
 
     @staticmethod
     def query_lm_studio(prompt: str, system_prompt: str = "") -> str:
@@ -141,7 +42,7 @@ class AIService:
                 "stream": False
             }
             
-            response = requests.post(url, json=payload, timeout=60)
+            response = requests.post(url, json=payload, timeout=120)
             if response.status_code == 200:
                 result = response.json()
                 choices = result.get("choices", [])

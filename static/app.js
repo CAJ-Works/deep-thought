@@ -15,9 +15,10 @@ let currentUser = "";
 let activeThoughts = [];
 let dbCategories = new Set();
 
-// Media Recording variables
-let mediaRecorder = null;
-let audioChunks = [];
+// Speech Recognition variables
+let recognition = null;
+let isRecordingSpeech = false;
+let visualizerStream = null;
 let audioContext = null;
 let analyserNode = null;
 let animationFrameId = null;
@@ -351,10 +352,9 @@ function setupCaptureEvents() {
 // ----------------------------------------------------
 
 async function submitTextThought() {
-    // If we are currently recording audio, stop it and save it!
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-        await toggleVoiceRecording();
-        return;
+    // If we are currently recording voice, stop it first!
+    if (isRecordingSpeech) {
+        toggleVoiceRecording();
     }
 
     const textarea = document.getElementById("thought-input");
@@ -383,120 +383,105 @@ async function submitTextThought() {
     }
 }
 
-async function toggleVoiceRecording() {
-    const voiceBtn = document.getElementById("voice-btn");
-    const submitBtnSpan = document.querySelector("#submit-btn span") || document.getElementById("submit-btn");
-    const textarea = document.getElementById("thought-input");
-    
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-        // Stop recording
-        mediaRecorder.stop();
-        voiceBtn.classList.remove("recording");
-        if (submitBtnSpan) submitBtnSpan.textContent = "Capture";
-        if (textarea) {
-            textarea.disabled = false;
-            textarea.placeholder = "Enter a thought, project concept, or research link...";
-        }
-        stopWaveformVisualizer();
+let speechBaseContent = "";
+
+function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        const voiceBtn = document.getElementById("voice-btn");
+        if (voiceBtn) voiceBtn.style.display = "none";
         return;
     }
     
-    // Start Recording
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioChunks = [];
-        mediaRecorder = new MediaRecorder(stream);
-        
-        mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) audioChunks.push(e.data);
-        };
-        
-        mediaRecorder.onstop = async () => {
-            stream.getTracks().forEach(track => track.stop());
-            document.getElementById("waveform-container").classList.remove("active");
-            
-            const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-            if (audioBlob.size > 1000) {
-                await uploadVoiceThought(audioBlob);
-            }
-        };
-        
-        mediaRecorder.start();
-        voiceBtn.classList.add("recording");
-        if (submitBtnSpan) submitBtnSpan.textContent = "Save Voice";
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    
+    recognition.onstart = () => {
+        isRecordingSpeech = true;
+        const voiceBtn = document.getElementById("voice-btn");
+        if (voiceBtn) voiceBtn.classList.add("recording");
+        const textarea = document.getElementById("thought-input");
         if (textarea) {
-            textarea.disabled = true;
-            textarea.value = "";
-            textarea.placeholder = "[Recording voice note... Click 'Save Voice' or the mic icon to finish]";
+            speechBaseContent = textarea.value;
+            textarea.placeholder = "[Listening to your voice... Speak now]";
         }
         document.getElementById("waveform-container").classList.add("active");
         
-        startWaveformVisualizer(stream);
-    } catch (e) {
-        alert("Failed to access microphone. Permission might be denied.");
-    }
+        try {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                visualizerStream = stream;
+                startWaveformVisualizer(stream);
+            }).catch(e => console.log("Visualizer microphone stream error:", e));
+        } catch (e) {
+            console.log("Could not start visualizer stream:", e);
+        }
+    };
+    
+    recognition.onresult = (event) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+        
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            } else {
+                interimTranscript += event.results[i][0].transcript;
+            }
+        }
+        
+        const textarea = document.getElementById("thought-input");
+        if (textarea) {
+            const separator = speechBaseContent && !speechBaseContent.endsWith(" ") ? " " : "";
+            textarea.value = speechBaseContent + separator + finalTranscript + interimTranscript;
+            textarea.scrollTop = textarea.scrollHeight;
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        if (event.error === "not-allowed") {
+            alert("Speech recognition permission denied.");
+            if (isRecordingSpeech) {
+                recognition.stop();
+            }
+        }
+    };
+    
+    recognition.onend = () => {
+        isRecordingSpeech = false;
+        const voiceBtn = document.getElementById("voice-btn");
+        if (voiceBtn) voiceBtn.classList.remove("recording");
+        const textarea = document.getElementById("thought-input");
+        if (textarea) {
+            textarea.placeholder = "Enter a thought, project concept, or research link...";
+        }
+        document.getElementById("waveform-container").classList.remove("active");
+        
+        if (visualizerStream) {
+            visualizerStream.getTracks().forEach(track => track.stop());
+            visualizerStream = null;
+        }
+        stopWaveformVisualizer();
+    };
 }
 
-async function uploadVoiceThought(audioBlob) {
-    const formData = new FormData();
-    formData.append("file", audioBlob, "voice_thought.wav");
-    
-    if (userCoordinates) {
-        formData.append("latitude", userCoordinates.lat);
-        formData.append("longitude", userCoordinates.lon);
-        formData.append("location_name", "Captured coordinates");
+function toggleVoiceRecording() {
+    if (!recognition) {
+        initSpeechRecognition();
     }
     
-    const submitBtn = document.getElementById("submit-btn");
-    const submitBtnSpan = document.querySelector("#submit-btn span") || submitBtn;
-    const voiceBtn = document.getElementById("voice-btn");
-    const textarea = document.getElementById("thought-input");
+    if (!recognition) return;
     
-    // Disable inputs and show status during upload
-    if (submitBtn) submitBtn.disabled = true;
-    if (submitBtnSpan) submitBtnSpan.textContent = "Saving...";
-    if (voiceBtn) voiceBtn.disabled = true;
-    if (textarea) {
-        textarea.disabled = true;
-        textarea.value = "";
-        textarea.placeholder = "[Transcribing and saving voice note, please wait...]";
-    }
-    
-    const timeline = document.getElementById("timeline-list");
-    timeline.innerHTML = `<div class="loading-spinner">Transcribing voice thought...</div>`;
-    
-    try {
-        const response = await fetch("/api/thoughts/voice", {
-            method: "POST",
-            body: formData
-        });
-        
-        // Restore controls
-        if (submitBtn) submitBtn.disabled = false;
-        if (submitBtnSpan) submitBtnSpan.textContent = "Capture";
-        if (voiceBtn) voiceBtn.disabled = false;
-        if (textarea) {
-            textarea.disabled = false;
-            textarea.placeholder = "Enter a thought, project concept, or research link...";
+    if (isRecordingSpeech) {
+        recognition.stop();
+    } else {
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error("Failed to start speech recognition:", e);
         }
-        
-        if (response.ok) {
-            loadDashboard();
-        } else {
-            const data = await response.json();
-            alert(data.detail || "Transcription error.");
-            loadDashboard();
-        }
-    } catch (e) {
-        alert("Failed to upload audio file.");
-        if (submitBtn) submitBtn.disabled = false;
-        if (submitBtnSpan) submitBtnSpan.textContent = "Capture";
-        if (voiceBtn) voiceBtn.disabled = false;
-        if (textarea) {
-            textarea.disabled = false;
-            textarea.placeholder = "Enter a thought, project concept, or research link...";
-        }
-        loadDashboard();
     }
 }
 

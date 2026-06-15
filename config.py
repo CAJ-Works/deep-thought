@@ -23,8 +23,4 @@ LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "")
 # Gemini Cloud API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# Local Whisper Speech-to-Text
-USE_LOCAL_WHISPER = os.getenv("USE_LOCAL_WHISPER", "true").lower() == "true"
-LOCAL_WHISPER_MODEL_PATH = os.getenv("LOCAL_WHISPER_MODEL_PATH", "/app/models/ggml-large-v3-turbo.bin")
-WHISPER_THREADS = int(os.getenv("WHISPER_THREADS", "4"))
 

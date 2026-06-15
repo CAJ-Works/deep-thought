@@ -8,9 +8,6 @@ WORKDIR /app
 # Install system dependencies (curl is useful for health checks)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    build-essential \
-    python3-dev \
-    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install python dependencies

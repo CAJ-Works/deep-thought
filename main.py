@@ -1,9 +1,9 @@
 import os
 import re
-import shutil
 import datetime
 import logging
 import ipaddress
+import threading
 from typing import Optional, List
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, Request, Response
 from fastapi.responses import HTMLResponse, FileResponse
@@ -18,6 +18,11 @@ from database import get_db, User, UserSession, Thought, ThoughtLink, WebReferen
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Concurrency guard for background thought enrichment task
+processing_thoughts = set()
+processing_thoughts_lock = threading.Lock()
+
 
 app = FastAPI(
     title="Deep Thought",
@@ -279,12 +284,22 @@ def enrich_thought_task(thought_id: int):
     """
     Worker task to enrich a captured thought: categorizes, links, and runs web crawls.
     """
+    with processing_thoughts_lock:
+        if thought_id in processing_thoughts:
+            logger.info(f"Thought {thought_id} is already being enriched. Skipping duplicate execution.")
+            return
+        processing_thoughts.add(thought_id)
+
     from ai_service import AIService
     db = database.SessionLocal()
     try:
         thought = db.query(Thought).filter(Thought.id == thought_id).first()
         if not thought:
             logger.warning(f"Enrichment task failed: Thought {thought_id} not found in DB.")
+            return
+
+        if thought.processed:
+            logger.info(f"Thought {thought_id} is already processed. Skipping.")
             return
 
         logger.info(f"Enriching thought {thought.id} for user {thought.user.username}...")
@@ -328,7 +343,7 @@ def enrich_thought_task(thought_id: int):
             content=thought.content,
             category=category,
             summary=summary,
-            web_references=[{"title": r.title, "url": r.url, "snippet": r.snippet} for r in web_refs]
+            web_references=[{"title": r.title, "url": r.url, "snippet": r.snippet} for r in web_refs[:2]]
         )
         if next_steps.startswith("[LLM generation failed"):
             raise RuntimeError(f"Next steps generation failed: {next_steps}")
@@ -372,6 +387,8 @@ def enrich_thought_task(thought_id: int):
         logger.error(f"Failed enrichment pipeline for thought {thought_id}: {e}")
     finally:
         db.close()
+        with processing_thoughts_lock:
+            processing_thoughts.discard(thought_id)
 
 # ----------------------------------------------------
 # Thoughts APIs
@@ -402,55 +419,6 @@ def create_thought(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to create thought: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/thoughts/voice")
-def create_voice_thought(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    latitude: Optional[float] = Form(None),
-    longitude: Optional[float] = Form(None),
-    location_name: Optional[str] = Form(None),
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    try:
-        temp_file_path = UPLOAD_DIR / f"{user.username}_{file.filename}"
-        with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        logger.info(f"Saved audio payload: {temp_file_path}")
-        
-        from ai_service import AIService
-        transcription = AIService.transcribe_audio(str(temp_file_path))
-        
-        # Cleanup file
-        if temp_file_path.exists():
-            os.remove(temp_file_path)
-            
-        if not transcription or transcription.startswith("[Transcription"):
-            raise HTTPException(status_code=400, detail="Voice note transcription failed. Ensure audio has speech.")
-            
-        thought = Thought(
-            user_id=user.id,
-            content=transcription,
-            latitude=latitude,
-            longitude=longitude,
-            location_name=location_name,
-            processed=False
-        )
-        db.add(thought)
-        db.commit()
-        db.refresh(thought)
-        
-        background_tasks.add_task(enrich_thought_task, thought.id)
-        return thought.to_dict()
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Voice thought ingestion failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -526,7 +494,7 @@ def get_thought_next_steps(
             content=thought.content,
             category=thought.category or "General",
             summary=thought.enrichment_summary or "",
-            web_references=[{"title": r.title, "url": r.url, "snippet": r.snippet} for r in web_refs]
+            web_references=[{"title": r.title, "url": r.url, "snippet": r.snippet} for r in web_refs[:2]]
         )
         if next_steps and not next_steps.startswith("[LLM generation failed"):
             thought.next_steps = next_steps
