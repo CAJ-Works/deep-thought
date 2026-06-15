@@ -566,12 +566,18 @@ def get_admin_users(request: Request, db: Session = Depends(get_db)):
     users = db.query(User).all()
     res = []
     for u in users:
+        thought_count = db.query(Thought).filter(Thought.user_id == u.id).count()
+        last_thought = db.query(Thought).filter(Thought.user_id == u.id).order_by(Thought.created_at.desc()).first()
+        last_thought_at = last_thought.created_at.isoformat() + "Z" if last_thought else None
+        
         res.append({
             "id": u.id,
             "username": u.username,
             "subdomain": u.subdomain or u.username,
             "failed_attempts": u.failed_attempts,
-            "lockout_until": u.lockout_until.isoformat() if u.lockout_until else None
+            "lockout_until": u.lockout_until.isoformat() + "Z" if u.lockout_until else None,
+            "thought_count": thought_count,
+            "last_thought_at": last_thought_at
         })
     return res
 

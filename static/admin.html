@@ -403,6 +403,8 @@
                             <tr>
                                 <th>User</th>
                                 <th>Subdomain Map</th>
+                                <th>Thoughts Logged</th>
+                                <th>Last Thought</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -485,13 +487,13 @@
 
         async function loadUsers() {
             const tbody = document.getElementById("users-table-body");
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Fetching users...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Fetching users...</td></tr>`;
             
             try {
                 const response = await fetch("/api/admin/users");
                 if (!response.ok) {
                     if (response.status === 403) {
-                        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--error-color); font-weight: bold;">CORS / 403 Forbidden: Access permitted from LAN (Local Network) only.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--error-color); font-weight: bold;">CORS / 403 Forbidden: Access permitted from LAN (Local Network) only.</td></tr>`;
                         return;
                     }
                     throw new Error("HTTP " + response.status);
@@ -499,7 +501,7 @@
                 const users = await response.json();
                 
                 if (users.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No users registered in the console.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No users registered in the console.</td></tr>`;
                     return;
                 }
 
@@ -521,9 +523,17 @@
                         unlockBtn = `<button class="btn btn-success btn-small" onclick="unlockUser(${u.id})" style="padding: 4px 8px; font-size: 0.75rem;">Reset Counter</button>`;
                     }
 
+                    let lastThoughtStr = "Never";
+                    if (u.last_thought_at) {
+                        const lastThoughtTime = new Date(u.last_thought_at);
+                        lastThoughtStr = lastThoughtTime.toLocaleString();
+                    }
+
                     tr.innerHTML = `
                         <td class="username-cell">${u.username}</td>
                         <td><span class="subdomain-tag">${u.subdomain}.teamjames.cc</span></td>
+                        <td>${u.thought_count || 0}</td>
+                        <td>${lastThoughtStr}</td>
                         <td>${statusHtml}</td>
                         <td>
                             <div class="action-row">
@@ -536,7 +546,7 @@
                     tbody.appendChild(tr);
                 });
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--error-color);">Error fetching user list: ${e.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--error-color);">Error fetching user list: ${e.message}</td></tr>`;
             }
         }
 

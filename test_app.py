@@ -143,5 +143,25 @@ class DeepThoughtTestCase(unittest.TestCase):
         user_db = self.db.query(User).filter(User.username == "chris").first()
         self.assertEqual(user_db.theme, "cyberpunk")
 
+    def test_serialization_timezone_aware(self):
+        # Chris adds a thought
+        thought_c = Thought(
+            user_id=self.chris.id,
+            content="Validating UTC serialization",
+            processed=True
+        )
+        self.db.add(thought_c)
+        self.db.commit()
+        
+        # Verify thought serialization includes 'Z'
+        t_dict = thought_c.to_dict()
+        self.assertTrue(t_dict["created_at"].endswith("Z"))
+        
+        # Verify user serialization includes 'Z' for lockout_until if present
+        self.chris.lockout_until = datetime.datetime.utcnow()
+        self.db.commit()
+        u_dict = self.chris.to_dict()
+        self.assertTrue(u_dict["lockout_until"].endswith("Z"))
+
 if __name__ == "__main__":
     unittest.main()

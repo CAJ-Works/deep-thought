@@ -36,7 +36,7 @@ class User(Base):
             "id": self.id,
             "username": self.username,
             "failed_attempts": self.failed_attempts,
-            "lockout_until": self.lockout_until.isoformat() if self.lockout_until else None
+            "lockout_until": self.lockout_until.isoformat() + "Z" if self.lockout_until else None
         }
 
 class UserSession(Base):
@@ -57,8 +57,8 @@ class UserSession(Base):
             "id": self.id,
             "user_id": self.user_id,
             "session_token": self.session_token,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "expires_at": self.expires_at.isoformat() + "Z" if self.expires_at else None,
             "is_trusted": self.is_trusted
         }
 
@@ -89,7 +89,7 @@ class Thought(Base):
             "id": self.id,
             "user_id": self.user_id,
             "content": self.content,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
             "latitude": self.latitude,
             "longitude": self.longitude,
             "location_name": self.location_name,
@@ -122,7 +122,7 @@ class ThoughtLink(Base):
             "relationship_type": self.relationship_type,
             "similarity_score": self.similarity_score,
             "description": self.description,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None
         }
 
 class WebReference(Base):
@@ -145,7 +145,7 @@ class WebReference(Base):
             "url": self.url,
             "title": self.title,
             "snippet": self.snippet,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None
         }
 
 # PIN hashing functions using PBKDF2 with SHA-256
