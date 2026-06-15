@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=1.8">
+    <link rel="stylesheet" href="/static/styles.css?v=1.9">
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
@@ -153,6 +153,14 @@
                                 <line x1="15" y1="6" x2="15" y2="21"></line>
                             </svg>
                         </button>
+                        <button id="calendar-view-btn" class="btn btn-secondary btn-small" title="View Calendar View" style="padding: 6px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-color);">
+                            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                        </button>
                     </div>
                     <div class="filter-controls">
                         <input type="text" id="search-input" placeholder="Search content...">
@@ -284,8 +292,41 @@
         </div>
     </div>
 
+    <!-- Thought Calendar Modal Overlay -->
+    <div class="modal-overlay" id="calendar-modal">
+        <div class="modal-content" style="max-width: 850px; height: 85vh; max-height: 85vh;">
+            <div class="modal-header">
+                <h3>Thought Calendar View</h3>
+                <button class="close-modal-btn" id="close-calendar">&times;</button>
+            </div>
+            <div class="modal-body calendar-split-body" style="flex: 1; padding: 20px; overflow: hidden; display: flex; flex-direction: column;">
+                <div class="calendar-split" style="display: flex; flex: 1; min-height: 0; gap: 24px;">
+                    <!-- Left Pane: Calendar Navigation and Grid -->
+                    <div class="calendar-main" style="flex: 1.2; display: flex; flex-direction: column; min-width: 0;">
+                        <div class="calendar-nav" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                            <button id="prev-month-btn" class="btn btn-secondary btn-small" style="padding: 4px 10px;">&larr;</button>
+                            <h4 id="calendar-month-year" style="margin: 0; font-size: 1.1rem; font-weight: 600;">June 2026</h4>
+                            <button id="next-month-btn" class="btn btn-secondary btn-small" style="padding: 4px 10px;">&rarr;</button>
+                        </div>
+                        <div class="calendar-weekdays" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 600; font-size: 0.8rem; opacity: 0.7; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                        </div>
+                        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; flex: 1; gap: 6px; margin-top: 8px; min-height: 0;"></div>
+                    </div>
+                    <!-- Right Pane: Selected Day Thoughts List -->
+                    <div class="calendar-details-panel" style="flex: 1; display: flex; flex-direction: column; min-width: 0; border-left: 1px solid var(--border-color); padding-left: 20px;">
+                        <h4 id="calendar-details-header" style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 600;">Select a day to view thoughts</h4>
+                        <div id="calendar-day-thoughts" class="popup-timeline" style="flex: 1; overflow-y: auto; padding-right: 4px;">
+                            <div style="opacity: 0.5; font-size: 0.85rem; font-style: italic; text-align: center; margin-top: 40px;">No thoughts list loaded yet.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Leaflet Map JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="/static/app.js?v=1.11"></script>
+    <script src="/static/app.js?v=1.12"></script>
 </body>
 </html>

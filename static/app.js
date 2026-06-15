@@ -37,6 +37,10 @@ let canvasEdgeColor = "rgba(108, 92, 231, 0.25)";
 let thoughtMap = null;
 let mapMarkers = [];
 
+// Calendar state variables
+let currentCalendarDate = new Date();
+let selectedCalendarDate = null;
+
 // Geolocation state
 let userCoordinates = null;
 let isLocationActive = false;
@@ -60,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupGraphEvents();
     setupSettingsEvents();
     setupMapEvents();
+    setupCalendarEvents();
 });
 
 function detectSubdomain() {
@@ -1295,4 +1300,207 @@ function getMarkerColorForCategory(category) {
     if (cat.includes("idea")) return "#fd9644"; // Idea segment
     if (cat.includes("todo")) return "#fc5c65"; // To-Do segment
     return "#a55eea";
+}
+
+function setupCalendarEvents() {
+    const calendarBtn = document.getElementById("calendar-view-btn");
+    const calendarModal = document.getElementById("calendar-modal");
+    const closeCalendarBtn = document.getElementById("close-calendar");
+    
+    const prevMonthBtn = document.getElementById("prev-month-btn");
+    const nextMonthBtn = document.getElementById("next-month-btn");
+    
+    if (calendarBtn) {
+        calendarBtn.addEventListener("click", () => {
+            if (calendarModal) {
+                calendarModal.classList.add("active");
+                currentCalendarDate = new Date();
+                selectedCalendarDate = null;
+                renderCalendar();
+            }
+        });
+    }
+    
+    if (closeCalendarBtn) {
+        closeCalendarBtn.addEventListener("click", () => {
+            if (calendarModal) calendarModal.classList.remove("active");
+        });
+    }
+    
+    if (calendarModal) {
+        calendarModal.addEventListener("click", (e) => {
+            if (e.target.id === "calendar-modal") {
+                calendarModal.classList.remove("active");
+            }
+        });
+    }
+    
+    if (prevMonthBtn) {
+        prevMonthBtn.addEventListener("click", () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            renderCalendar();
+        });
+    }
+    
+    if (nextMonthBtn) {
+        nextMonthBtn.addEventListener("click", () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            renderCalendar();
+        });
+    }
+
+    // Intercept clicks on view details links inside the calendar list (closes calendar and opens details)
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".calendar-details-panel .view-thought-details-btn");
+        if (btn) {
+            e.preventDefault();
+            const thoughtId = btn.getAttribute("data-id");
+            if (calendarModal) calendarModal.classList.remove("active");
+            openThoughtDetails(thoughtId);
+        }
+    });
+}
+
+function renderCalendar() {
+    const monthYearLabel = document.getElementById("calendar-month-year");
+    const grid = document.getElementById("calendar-grid");
+    const thoughtsContainer = document.getElementById("calendar-day-thoughts");
+    const detailsHeader = document.getElementById("calendar-details-header");
+    
+    if (!grid) return;
+    grid.innerHTML = "";
+    
+    // Reset thoughts details panel on redraw
+    if (thoughtsContainer) {
+        thoughtsContainer.innerHTML = `<div style="opacity: 0.5; font-size: 0.85rem; font-style: italic; text-align: center; margin-top: 40px;">Select a day to view thoughts.</div>`;
+    }
+    if (detailsHeader) {
+        detailsHeader.textContent = "Select a day to view thoughts";
+    }
+    
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+    
+    // Update month year label text (e.g. "June 2026")
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    if (monthYearLabel) {
+        monthYearLabel.textContent = `${monthNames[month]} ${year}`;
+    }
+    
+    // Group thoughts by local date string YYYY-MM-DD
+    const thoughtsByDate = {};
+    activeThoughts.forEach(t => {
+        const dateObj = new Date(t.created_at);
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const d = String(dateObj.getDate()).padStart(2, "0");
+        const dateKey = `${y}-${m}-${d}`;
+        if (!thoughtsByDate[dateKey]) {
+            thoughtsByDate[dateKey] = [];
+        }
+        thoughtsByDate[dateKey].push(t);
+    });
+    
+    // Get first day of month and total days
+    const firstDay = new Date(year, month, 1).getDay(); // weekday index (0-6)
+    const totalDays = new Date(year, month + 1, 0).getDate(); // last day date
+    
+    // Render padding cells for days from the previous month
+    for (let i = 0; i < firstDay; i++) {
+        const padCell = document.createElement("div");
+        padCell.className = "calendar-day-cell inactive";
+        grid.appendChild(padCell);
+    }
+    
+    // Render active month days
+    for (let day = 1; day <= totalDays; day++) {
+        const dayCell = document.createElement("div");
+        dayCell.className = "calendar-day-cell";
+        dayCell.textContent = day;
+        
+        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const dayThoughts = thoughtsByDate[dateKey] || [];
+        
+        if (dayThoughts.length > 0) {
+            dayCell.classList.add("has-thoughts");
+            const badge = document.createElement("span");
+            badge.className = "day-count-badge";
+            badge.textContent = dayThoughts.length;
+            dayCell.appendChild(badge);
+        }
+        
+        if (selectedCalendarDate === dateKey) {
+            dayCell.classList.add("selected");
+            renderCalendarDayThoughts(dateKey, dayThoughts);
+        }
+        
+        dayCell.addEventListener("click", () => {
+            // Remove selection highlight from previously selected cells
+            const selectedCell = grid.querySelector(".calendar-day-cell.selected");
+            if (selectedCell) selectedCell.classList.remove("selected");
+            
+            dayCell.classList.add("selected");
+            selectedCalendarDate = dateKey;
+            
+            renderCalendarDayThoughts(dateKey, dayThoughts);
+        });
+        
+        grid.appendChild(dayCell);
+    }
+}
+
+function renderCalendarDayThoughts(dateKey, thoughts) {
+    const thoughtsContainer = document.getElementById("calendar-day-thoughts");
+    const detailsHeader = document.getElementById("calendar-details-header");
+    
+    // Parse date label (e.g. "June 14, 2026")
+    const [y, m, d] = dateKey.split("-").map(Number);
+    const dateLabel = new Date(y, m - 1, d).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+    
+    if (detailsHeader) {
+        detailsHeader.textContent = `Thoughts on ${dateLabel}`;
+    }
+    
+    if (!thoughtsContainer) return;
+    
+    if (thoughts.length === 0) {
+        thoughtsContainer.innerHTML = `<div style="opacity: 0.5; font-size: 0.85rem; font-style: italic; text-align: center; margin-top: 40px;">No thoughts captured on this day.</div>`;
+        return;
+    }
+    
+    // Sort thoughts chronologically newest to oldest
+    const sortedThoughts = [...thoughts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    thoughtsContainer.innerHTML = "";
+    sortedThoughts.forEach(t => {
+        const dateStr = new Date(t.created_at).toLocaleTimeString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+        
+        const category = t.category || "General";
+        const categoryLower = category.toLowerCase();
+        let borderClass = "cat-border-general";
+        if (categoryLower.includes("research")) borderClass = "cat-border-research";
+        else if (categoryLower.includes("idea")) borderClass = "cat-border-idea";
+        else if (categoryLower.includes("todo")) borderClass = "cat-border-todo";
+        
+        const categoryBadge = t.category ? `<span class="badge badge-category" style="margin-left:0; margin-bottom:4px; display:inline-block; font-size: 0.65rem; padding: 2px 6px;">${t.category}</span>` : "";
+        const snippet = t.content;
+        
+        const item = document.createElement("div");
+        item.className = `calendar-thought-item ${borderClass}`;
+        item.innerHTML = `
+            <span style="font-size: 0.7rem; color: var(--text-secondary); display:block; margin-bottom:2px;">${dateStr}</span>
+            ${categoryBadge}
+            <p style="font-size: 0.8rem; margin: 4px 0 6px 0; color: var(--text-primary); line-height: 1.4; word-break: break-word;">${snippet}</p>
+            <a href="#" class="view-thought-details-btn" data-id="${t.id}" style="font-size:0.75rem; font-weight:600; color:var(--primary-color); text-decoration:none; display:inline-block;">View Details &rarr;</a>
+        `;
+        
+        thoughtsContainer.appendChild(item);
+    });
 }

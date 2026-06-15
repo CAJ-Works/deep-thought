@@ -1568,3 +1568,121 @@ body[data-theme="tokyo"] .filter-controls select {
 .popup-timeline::-webkit-scrollbar-thumb:hover {
     background: var(--border-color-hover);
 }
+
+/* Calendar View Modal Layout */
+.calendar-day-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1.1; /* slightly wider than tall for standard layouts */
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.calendar-day-cell:hover {
+    background: var(--card-bg-hover);
+    border-color: var(--border-color-hover);
+    transform: translateY(-1px);
+}
+
+.calendar-day-cell.inactive {
+    opacity: 0.25;
+    cursor: default;
+    pointer-events: none;
+    border-color: transparent;
+}
+
+.calendar-day-cell.selected {
+    border: 2px solid var(--primary-color) !important;
+    background: var(--card-bg-hover);
+    box-shadow: 0 0 10px rgba(108, 92, 231, 0.2);
+}
+
+.day-count-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background-color: var(--primary-color);
+    color: #ffffff !important;
+    font-size: 0.62rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Calendar thoughts list item color borders matching map category legend */
+.calendar-thought-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+
+.calendar-thought-item:hover {
+    background: var(--card-bg-hover);
+    border-color: var(--border-color-hover);
+    transform: translateX(2px);
+}
+
+.cat-border-general {
+    border-left: 4px solid #a55eea !important;
+}
+
+.cat-border-research {
+    border-left: 4px solid #00cec9 !important;
+}
+
+.cat-border-idea {
+    border-left: 4px solid #fd9644 !important;
+}
+
+.cat-border-todo {
+    border-left: 4px solid #fc5c65 !important;
+}
+
+/* Responsive splits for mobile calendar viewports */
+@media (max-width: 768px) {
+    .calendar-split {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .calendar-details-panel {
+        border-left: none !important;
+        border-top: 1px solid var(--border-color);
+        padding-left: 0 !important;
+        padding-top: 20px;
+        margin-top: 15px;
+        flex: none !important;
+    }
+    .calendar-main {
+        flex: none !important;
+    }
+    .calendar-day-cell {
+        aspect-ratio: 1.2;
+        font-size: 0.8rem;
+    }
+    .day-count-badge {
+        top: 2px;
+        right: 2px;
+        min-width: 14px;
+        height: 14px;
+        font-size: 0.58rem;
+    }
+}
+
