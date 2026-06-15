@@ -9,30 +9,27 @@ Deep Thought is a private, self-hosted web console and background cognitive pipe
 ```
 [ Internet Client ] ◄──► [ Cloudflare Tunnel ] ◄──► [ Docker Stack: FastAPI & SQLite ]
                                                            │
-                                                           ├──► [ Gemini Cloud API ] (Transcription)
-                                                           │
                                                            └──► [ LM Studio Native macOS ] (Inference)
                                                                  (Metal/GPU Accelerated)
 ```
 
-- **Frontend:** Responsive HTML5, Vanilla ES6 JavaScript, and Vanilla CSS (Glassmorphism theme) with browser-native Web Audio recording and a dynamic HTML5 Canvas force-directed graph physics solver.
-- **Backend:** FastAPI (Python 3.9) exposing endpoint APIs, managing database transactions, and running asynchronous tasks.
+- **Frontend:** Responsive HTML5, Vanilla ES6 JavaScript, and Vanilla CSS (Glassmorphism theme) with a dynamic HTML5 Canvas force-directed graph physics solver. Native keyboard dictation can be used for voice-to-text directly.
+- **Backend:** FastAPI (Python 3.11) exposing endpoint APIs, managing database transactions, and running asynchronous tasks.
 - **Database:** SQLite for lightweight, fast, file-based persistence.
-- **AI Router:** Integrates local hardware-accelerated models via **LM Studio** and the **Gemini API** for high-fidelity text synthesis and audio transcriptions.
-- **Worker Daemon:** Backed by `APScheduler`, running check-ups every 2 hours and deep contextual crawls nightly at 2:00 AM.
+- **AI Router:** Integrates local hardware-accelerated models via **LM Studio** (and optional **Gemini API** fallbacks) for high-fidelity text synthesis.
+- **Worker Daemon:** Backed by `APScheduler`, running check-ups every 20 minutes and deep contextual crawls nightly at 2:00 AM.
 
 ---
 
 ## Key Features
 
-1. **Snappy Capture:** A fixed top-panel input for instant text thoughts.
-2. **Audio Transcription:** Record voice notes using the browser microphone with a real-time canvas waveform visualizer. Audio is transcribed via the Gemini 1.5 Flash API.
-3. **Location Tagging:** Captures browser GPS coordinates and appends location tags (e.g., neighborhood or coordinates) to entries.
-4. **Subdomain Multi-User Support:** Detects user contexts dynamically based on the incoming subdomain (e.g. `chris.teamjames.cc` routes to Chris's database, while `brandon.teamjames.cc` routes to Brandon's database).
-5. **PIN Pad Security & Lockout:** A numeric keypad overlay locks the screen. 3 incorrect PIN inputs lock the account for 90 seconds. 
-6. **Trusted Devices:** "Remember this device" checkbox saves a cryptographically signed secure session cookie valid for 30 days.
-7. **Semantic Connecting:** Background worker auto-detects keywords and common contexts to link related thoughts (e.g., automatically linking *"turtle baseball"* to last week's *"alligator soccer"*).
-8. **Nightly Web Research:** Crawler generates search queries for thoughts, searches DuckDuckGo, and appends context links and summary snippets.
+1. **Snappy Capture:** A fixed top-panel input for instant text thoughts (native device dictation can be invoked via the system keyboard microphone icon).
+2. **Location Tagging:** Captures browser GPS coordinates and appends location links to entries.
+3. **Subdomain Multi-User Support:** Detects user contexts dynamically based on the incoming subdomain (e.g. `chris.teamjames.cc` routes to Chris's database, while `brandon.teamjames.cc` routes to Brandon's database).
+4. **PIN Pad Security & Lockout:** A numeric keypad overlay locks the screen. 3 incorrect PIN inputs lock the account for 90 seconds. 
+5. **Trusted Devices:** "Remember this device" checkbox saves a cryptographically signed secure session cookie valid for 30 days.
+6. **Semantic Connecting:** Background worker auto-detects keywords and common contexts to link related thoughts (e.g., automatically linking *"turtle baseball"* to last week's *"alligator soccer"*).
+7. **Nightly Web Research:** Crawler generates search queries for thoughts, searches DuckDuckGo, and appends context links and summary snippets.
 
 ---
 
@@ -41,7 +38,7 @@ Deep Thought is a private, self-hosted web console and background cognitive pipe
 - **Mac Mini** running macOS.
 - **Docker** & **Docker Compose** installed (via Docker Desktop or OrbStack).
 - **LM Studio** installed and running on the Mac Mini.
-- A **Gemini API Key** (generate one for free/low-cost at Google AI Studio).
+- A **Gemini API Key** (optional, used as a fallback for reasoning when LM Studio is offline).
 - A **Cloudflare Account** and a configured custom domain (e.g., `teamjames.cc`) with a Cloudflare Tunnel setup.
 
 ---
@@ -77,12 +74,12 @@ To ensure the local models run with Apple Silicon GPU acceleration (Metal), LM S
    # Cloudflare Tunnel Configuration
    CLOUDFLARE_TUNNEL_TOKEN=your_cloudflare_tunnel_token_here
 
-   # LM Studio settings (points to host macOS via Docker host bridge)
-   LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1
-   LM_STUDIO_MODEL=meta-llama-3-8b-instruct
+    # LM Studio settings (points to host macOS via Docker host bridge)
+    LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1
+    LM_STUDIO_MODEL=gemma-4-12b-it
 
-   # Gemini API Key (Needed for transcription)
-   GEMINI_API_KEY=your_gemini_api_key_here
+    # Gemini API Key (Optional fallback reasoning model)
+    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
 ---
