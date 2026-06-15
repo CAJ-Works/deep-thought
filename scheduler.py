@@ -54,14 +54,51 @@ def nightly_deep_thinking_job():
     finally:
         db.close()
 
+def dispatch_reminders_job():
+    """
+    Polls the database for reminders that are due and sends push notifications.
+    Runs every 1 minute.
+    """
+    logger.info("Checking for due reminders to dispatch...")
+    import datetime
+    from notifier import send_push_notification
+    db = database.SessionLocal()
+    try:
+        now = datetime.datetime.utcnow()
+        due_reminders = db.query(Thought).filter(
+            Thought.is_reminder == True,
+            Thought.reminder_sent == False,
+            Thought.reminder_at != None,
+            Thought.reminder_at <= now
+        ).all()
+        
+        if due_reminders:
+            logger.info(f"Found {len(due_reminders)} due reminders. Sending notifications...")
+            for thought in due_reminders:
+                message = f"⏰ Reminder: {thought.content}"
+                sent = send_push_notification(message)
+                if sent:
+                    thought.reminder_sent = True
+                    db.commit()
+                    logger.info(f"Reminder for thought {thought.id} dispatched and marked sent.")
+        else:
+            logger.info("No due reminders found.")
+    except Exception as e:
+        logger.error(f"Error during reminders dispatch job: {e}")
+    finally:
+        db.close()
+
 def start_scheduler():
     """
     Initializes and starts the background job scheduler.
     """
     scheduler = BackgroundScheduler()
     
-    # Run a check every 1 minute
+    # Run a check every 20 minutes for unprocessed thoughts
     scheduler.add_job(periodic_enrichment_job, 'interval', minutes=20, id="periodic_check")
+    
+    # Run check for due reminders every 1 minute
+    scheduler.add_job(dispatch_reminders_job, 'interval', minutes=1, id="reminders_dispatch")
     
     # Run nightly research at 2:00 AM every day
     scheduler.add_job(nightly_deep_thinking_job, 'cron', hour=2, id="nightly_job")

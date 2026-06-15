@@ -90,6 +90,8 @@ class ThoughtCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_name: Optional[str] = None
+    client_local_time: Optional[str] = None
+    timezone_offset: Optional[int] = None
 
 class ThoughtUpdate(BaseModel):
     content: str
@@ -105,6 +107,11 @@ class ThoughtResponse(BaseModel):
     processed: bool
     enrichment_summary: Optional[str] = None
     next_steps: Optional[str] = None
+    is_todo: bool
+    todo_done: bool
+    is_reminder: bool
+    reminder_at: Optional[str] = None
+    reminder_sent: bool
 
 # ----------------------------------------------------
 # Multi-User Subdomain & Session Dependencies
@@ -282,9 +289,13 @@ def logout(response: Response, request: Request, db: Session = Depends(get_db)):
 # Background Enrichment Task Logic
 # ----------------------------------------------------
 
-def enrich_thought_task(thought_id: int):
+def enrich_thought_task(
+    thought_id: int,
+    client_local_time: Optional[str] = None,
+    timezone_offset: Optional[int] = None
+):
     """
-    Worker task to enrich a captured thought: categorizes, links, and runs web crawls.
+    Worker task to enrich a captured thought: categorizes, links, runs web crawls, and parses To-Dos/Reminders.
     """
     with processing_thoughts_lock:
         if thought_id in processing_thoughts:
@@ -293,6 +304,7 @@ def enrich_thought_task(thought_id: int):
         processing_thoughts.add(thought_id)
 
     from ai_service import AIService
+    import datetime
     db = database.SessionLocal()
     try:
         thought = db.query(Thought).filter(Thought.id == thought_id).first()
@@ -306,6 +318,30 @@ def enrich_thought_task(thought_id: int):
 
         logger.info(f"Enriching thought {thought.id} for user {thought.user.username}...")
         
+        # 0. Extract To-Do and Reminder configurations using LLM
+        local_time_context = client_local_time or datetime.datetime.utcnow().isoformat()
+        try:
+            parsed_data = AIService.parse_todo_and_reminder(thought.content, local_time_context)
+            thought.is_todo = parsed_data.get("is_todo", False)
+            thought.is_reminder = parsed_data.get("is_reminder", False)
+            
+            # If categorized as "To-Do" by the custom categorizer, override is_todo to True
+            # to remain consistent with category classifications
+            
+            reminder_at_str = parsed_data.get("reminder_at")
+            if thought.is_reminder and reminder_at_str:
+                # Naive local time parsing
+                dt_local = datetime.datetime.fromisoformat(reminder_at_str.replace("Z", ""))
+                if timezone_offset is not None:
+                    # Client offset is in minutes (UTC - Local), so: UTC = Local + offset
+                    dt_utc = dt_local + datetime.timedelta(minutes=timezone_offset)
+                else:
+                    dt_utc = dt_local
+                thought.reminder_at = dt_utc
+                thought.reminder_sent = False
+        except Exception as e:
+            logger.error(f"Failed to parse and extract task/reminder metadata for thought {thought.id}: {e}")
+            
         # 1. Auto Categorize
         category = AIService.categorize_thought(thought.content)
         if category.startswith("[LLM generation failed"):
@@ -416,7 +452,12 @@ def create_thought(
         db.commit()
         db.refresh(thought)
         
-        background_tasks.add_task(enrich_thought_task, thought.id)
+        background_tasks.add_task(
+            enrich_thought_task, 
+            thought.id, 
+            thought_in.client_local_time, 
+            thought_in.timezone_offset
+        )
         return thought.to_dict()
     except Exception as e:
         db.rollback()
@@ -579,6 +620,25 @@ def update_thought(
     
     background_tasks.add_task(enrich_thought_task, thought_id)
     return {"status": "updated_and_processing"}
+
+
+@app.put("/api/thoughts/{thought_id}/todo")
+def toggle_todo_status(
+    thought_id: int,
+    todo_done: bool,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    thought = db.query(Thought).filter(
+        Thought.id == thought_id,
+        Thought.user_id == user.id
+    ).first()
+    if not thought:
+        raise HTTPException(status_code=404, detail="Thought not found")
+        
+    thought.todo_done = todo_done
+    db.commit()
+    return {"status": "success", "id": thought.id, "todo_done": thought.todo_done}
 
 
 @app.get("/api/graph")

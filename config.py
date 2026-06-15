@@ -23,4 +23,12 @@ LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "")
 # Gemini Cloud API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+# Push Notification Configurations
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+NTFY_TOPIC = os.getenv("NTFY_TOPIC", "")
+PUSHOVER_USER_KEY = os.getenv("PUSHOVER_USER_KEY", "")
+PUSHOVER_APP_TOKEN = os.getenv("PUSHOVER_APP_TOKEN", "")
+PUSHBULLET_API_KEY = os.getenv("PUSHBULLET_API_KEY", "")
+
 

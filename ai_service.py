@@ -223,5 +223,47 @@ class AIService:
         
         return cls.query_llm(prompt=prompt, system_prompt=system_prompt)
 
+    @classmethod
+    def parse_todo_and_reminder(cls, content: str, client_local_time: str) -> dict:
+        """
+        Asks the LLM to analyze the thought and parse whether it is a To-Do task or a Reminder.
+        Extracts the target date/time in ISO format relative to the client's current time context.
+        """
+        system_prompt = (
+            "You are a task and reminder extraction assistant. Analyze the user's thought. "
+            f"Current user local time: {client_local_time}. "
+            "Output a JSON object containing exactly these keys:\n"
+            "1. 'is_todo': boolean (true if the thought represents an action item, task, or chore to complete)\n"
+            "2. 'is_reminder': boolean (true if the user requests a reminder for a specific time/date)\n"
+            "3. 'reminder_at': ISO-8601 formatted string (e.g., 'YYYY-MM-DDTHH:MM:SS') or null if no reminder time is mentioned.\n"
+            "Respond ONLY with the raw JSON object. Do not include markdown code block syntax (like ```json), quotes, or extra text."
+        )
+        
+        response = cls.query_llm(
+            prompt=f"Extract task/reminder data from this thought: '{content}'",
+            system_prompt=system_prompt
+        )
+        
+        # Default fallback
+        result = {
+            "is_todo": False,
+            "is_reminder": False,
+            "reminder_at": None
+        }
+        
+        try:
+            # Extract JSON block using regex if LLM outputs markdown
+            match = re.search(r"(\{.*?\})", response, re.DOTALL)
+            if match:
+                parsed = json.loads(match.group(1))
+                if isinstance(parsed, dict):
+                    result["is_todo"] = bool(parsed.get("is_todo", False))
+                    result["is_reminder"] = bool(parsed.get("is_reminder", False))
+                    result["reminder_at"] = parsed.get("reminder_at")
+        except Exception as e:
+            logger.warning(f"Failed to parse task/reminder JSON: {e}. Raw response: {response}")
+            
+        return result
+
 
 

@@ -14,6 +14,7 @@ let currentPIN = "";
 let currentUser = "";
 let activeThoughts = [];
 let dbCategories = new Set();
+let activeTab = "all";
 
 
 
@@ -351,7 +352,9 @@ async function submitTextThought() {
         content: content,
         latitude: userCoordinates ? userCoordinates.lat : null,
         longitude: userCoordinates ? userCoordinates.lon : null,
-        location_name: userCoordinates ? "Captured coordinates" : null
+        location_name: userCoordinates ? "Captured coordinates" : null,
+        client_local_time: new Date().toISOString(),
+        timezone_offset: new Date().getTimezoneOffset()
     };
     
     try {
@@ -405,29 +408,70 @@ function renderTimeline() {
     const list = document.getElementById("timeline-list");
     let unprocessedCount = 0;
     
-    if (activeThoughts.length === 0) {
-        list.innerHTML = `<div class="loading-spinner">No thought entries matches the criteria.</div>`;
+    // Filter thoughts based on active tab
+    const filteredThoughts = activeThoughts.filter(t => {
+        if (activeTab === "todos") return t.is_todo;
+        if (activeTab === "reminders") return t.is_reminder;
+        return true;
+    });
+    
+    if (filteredThoughts.length === 0) {
+        list.innerHTML = `<div class="loading-spinner" style="opacity: 0.6; font-style: italic;">No thoughts match this filter tab.</div>`;
         document.getElementById("unprocessed-count").textContent = "0";
         return;
     }
     
-    list.innerHTML = "";
+    // Calculate total unprocessed counts from all thoughts (for metrics bar)
     activeThoughts.forEach(t => {
         if (!t.processed) unprocessedCount++;
-        
+    });
+    
+    list.innerHTML = "";
+    filteredThoughts.forEach(t => {
         const dateStr = new Date(t.created_at).toLocaleString();
         const card = document.createElement("div");
-        card.className = "thought-card";
+        card.className = "thought-card" + (t.is_todo && t.todo_done ? " todo-card-done" : "");
+        
+        // Dynamic badges
+        let reminderBadge = "";
+        if (t.is_reminder && t.reminder_at) {
+            const localReminder = new Date(t.reminder_at).toLocaleString();
+            const statusClass = t.reminder_sent ? "badge-reminder-sent" : "badge-reminder-pending";
+            const statusText = t.reminder_sent ? "Sent" : "Pending";
+            reminderBadge = `
+                <span class="badge badge-reminder" title="Reminder scheduled">⏰ ${localReminder}</span>
+                <span class="badge ${statusClass}">${statusText}</span>
+            `;
+        }
+        
+        // Body layout changes depending on whether card is a To-Do task
+        let bodyHtml = "";
+        if (t.is_todo) {
+            bodyHtml = `
+                <div class="thought-card-body-row">
+                    <div class="todo-checkbox-wrapper">
+                        <input type="checkbox" class="todo-checkbox" ${t.todo_done ? "checked" : ""} data-id="${t.id}">
+                    </div>
+                    <div class="thought-card-content-wrapper">
+                        <p class="thought-content">${t.content}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            bodyHtml = `<p class="thought-content">${t.content}</p>`;
+        }
+        
         card.innerHTML = `
             <div class="thought-card-header">
                 <span class="thought-date">${dateStr}</span>
                 <div class="badges-row">
                     ${t.category ? `<span class="badge badge-category">${t.category}</span>` : ""}
+                    ${reminderBadge}
                     ${t.processed ? `<span class="badge badge-success">Enriched</span>` : `<span class="badge badge-pending">Processing</span>`}
                     ${t.web_references && t.web_references.length > 0 ? `<span class="badge badge-updates">${t.web_references.length} Links</span>` : ""}
                 </div>
             </div>
-            <p class="thought-content">${t.content}</p>
+            ${bodyHtml}
             <div class="thought-card-footer">
                 <span class="location-tag">
                     <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none">
@@ -442,11 +486,38 @@ function renderTimeline() {
             </div>
         `;
         
-        // Modal trigger on card click (except click on delete/reprocess/location actions)
+        // Modal trigger on card click (except click on delete/reprocess/location/checkbox actions)
         card.addEventListener("click", (e) => {
-            if (e.target.classList.contains("action-link") || e.target.classList.contains("location-link") || e.target.closest(".location-link")) return;
+            if (e.target.classList.contains("action-link") || 
+                e.target.classList.contains("location-link") || 
+                e.target.closest(".location-link") ||
+                e.target.classList.contains("todo-checkbox")) return;
             openThoughtDetails(t.id);
         });
+        
+        // Attach To-Do checkbox listener
+        if (t.is_todo) {
+            const checkbox = card.querySelector(".todo-checkbox");
+            if (checkbox) {
+                checkbox.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                });
+                checkbox.addEventListener("change", async (e) => {
+                    const done = e.target.checked;
+                    try {
+                        const res = await fetch(`/api/thoughts/${t.id}/todo?todo_done=${done}`, {
+                            method: "PUT"
+                        });
+                        if (res.ok) {
+                            t.todo_done = done;
+                            renderTimeline();
+                        }
+                    } catch (err) {
+                        console.error("Failed to update task status:", err);
+                    }
+                });
+            }
+        }
         
         // Attach actions click listeners
         card.querySelector(".delete-action").addEventListener("click", async (e) => {
@@ -507,6 +578,16 @@ function populateCategoryFilter() {
 function setupFilterEvents() {
     document.getElementById("search-input").addEventListener("input", fetchThoughts);
     document.getElementById("category-filter").addEventListener("change", fetchThoughts);
+    
+    // Timeline tabs filtering
+    document.querySelectorAll(".timeline-tabs .tab-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            document.querySelectorAll(".timeline-tabs .tab-btn").forEach(b => b.classList.remove("active"));
+            e.target.classList.add("active");
+            activeTab = e.target.getAttribute("data-tab");
+            renderTimeline();
+        });
+    });
 }
 
 // ----------------------------------------------------

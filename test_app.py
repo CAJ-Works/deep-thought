@@ -222,6 +222,76 @@ class DeepThoughtTestCase(unittest.TestCase):
             # Clean up
             processing_thoughts.discard(9999)
 
+    def test_todo_creation_and_toggling(self):
+        thought = Thought(
+            user_id=self.chris.id,
+            content="Plan my trip",
+            is_todo=True,
+            todo_done=False
+        )
+        self.db.add(thought)
+        self.db.commit()
+        
+        self.db.refresh(thought)
+        self.assertTrue(thought.is_todo)
+        self.assertFalse(thought.todo_done)
+        
+        # Toggle done
+        thought.todo_done = True
+        self.db.commit()
+        
+        self.db.refresh(thought)
+        self.assertTrue(thought.todo_done)
+
+    def test_reminder_local_to_utc_conversion(self):
+        # Test offset conversion: Local (naive) + offset (minutes) = UTC
+        reminder_at_str = "2026-06-16T09:00:00"
+        timezone_offset = 240  # 4 hours
+        
+        dt_local = datetime.datetime.fromisoformat(reminder_at_str)
+        dt_utc = dt_local + datetime.timedelta(minutes=timezone_offset)
+        
+        self.assertEqual(dt_utc.year, 2026)
+        self.assertEqual(dt_utc.month, 6)
+        self.assertEqual(dt_utc.day, 16)
+        self.assertEqual(dt_utc.hour, 13)
+        self.assertEqual(dt_utc.minute, 0)
+
+    def test_reminders_dispatch_job_polling(self):
+        # Create a reminder in the past
+        past_time = datetime.datetime.utcnow() - datetime.timedelta(minutes=5)
+        reminder = Thought(
+            user_id=self.chris.id,
+            content="Turn off the oven",
+            is_reminder=True,
+            reminder_at=past_time,
+            reminder_sent=False
+        )
+        self.db.add(reminder)
+        self.db.commit()
+        
+        # Poll database for due reminders
+        due = self.db.query(Thought).filter(
+            Thought.is_reminder == True,
+            Thought.reminder_sent == False,
+            Thought.reminder_at <= datetime.datetime.utcnow()
+        ).all()
+        
+        self.assertEqual(len(due), 1)
+        self.assertEqual(due[0].content, "Turn off the oven")
+        
+        # Simulate send
+        due[0].reminder_sent = True
+        self.db.commit()
+        
+        # Verify no more due reminders
+        due_after = self.db.query(Thought).filter(
+            Thought.is_reminder == True,
+            Thought.reminder_sent == False,
+            Thought.reminder_at <= datetime.datetime.utcnow()
+        ).all()
+        self.assertEqual(len(due_after), 0)
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -80,6 +80,13 @@ class Thought(Base):
     processed = Column(Boolean, default=False, index=True)
     enrichment_summary = Column(Text, nullable=True)
     next_steps = Column(Text, nullable=True)
+
+    # To-Do & Reminder fields
+    is_todo = Column(Boolean, default=False, nullable=False, index=True)
+    todo_done = Column(Boolean, default=False, nullable=False, index=True)
+    is_reminder = Column(Boolean, default=False, nullable=False, index=True)
+    reminder_at = Column(DateTime, nullable=True, index=True)
+    reminder_sent = Column(Boolean, default=False, nullable=False, index=True)
     
     # Relationships
     user = relationship("User", back_populates="thoughts")
@@ -98,6 +105,11 @@ class Thought(Base):
             "processed": self.processed,
             "enrichment_summary": self.enrichment_summary,
             "next_steps": self.next_steps,
+            "is_todo": self.is_todo,
+            "todo_done": self.todo_done,
+            "is_reminder": self.is_reminder,
+            "reminder_at": self.reminder_at.isoformat() + "Z" if self.reminder_at else None,
+            "reminder_sent": self.reminder_sent,
             "web_references": [ref.to_dict() for ref in self.web_references]
         }
 
@@ -218,10 +230,25 @@ def init_db():
         db.commit()
         print("Database migrated: added 'next_steps' column to 'thoughts' table.")
     except Exception as e:
-        # Column already exists or failed, ignore
         pass
-    finally:
-        db.close()
+
+    # Programmatically add is_todo, todo_done, is_reminder, reminder_at, reminder_sent columns if they don't exist
+    for col, col_type in [
+        ("is_todo", "BOOLEAN DEFAULT 0"),
+        ("todo_done", "BOOLEAN DEFAULT 0"),
+        ("is_reminder", "BOOLEAN DEFAULT 0"),
+        ("reminder_at", "DATETIME"),
+        ("reminder_sent", "BOOLEAN DEFAULT 0")
+    ]:
+        try:
+            db.execute(text(f"ALTER TABLE thoughts ADD COLUMN {col} {col_type}"))
+            db.commit()
+            print(f"Database migrated: added '{col}' column to 'thoughts' table.")
+        except Exception as e:
+            # Already exists or failed, ignore
+            pass
+    
+    db.close()
 
 if __name__ == "__main__":
     print("Initializing SQLite Database...")

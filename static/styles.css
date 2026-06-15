@@ -1617,7 +1617,6 @@ body[data-theme="tokyo"] .filter-controls select {
     }
     .calendar-day-cell {
         aspect-ratio: 1.2;
-        font-size: 0.8rem;
     }
     .day-count-badge {
         top: 2px;
@@ -1627,4 +1626,96 @@ body[data-theme="tokyo"] .filter-controls select {
         font-size: 0.58rem;
     }
 }
+
+/* Tasks (To-Dos) & Reminders Styling */
+.timeline-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    color: #fff;
+    background: var(--primary-color);
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+}
+
+/* To-Do Elements */
+.todo-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+}
+
+.todo-checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    accent-color: var(--primary-color);
+    transition: var(--transition);
+}
+
+.thought-card.todo-card-done {
+    opacity: 0.55;
+    border-color: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.thought-card.todo-card-done .thought-content {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+.thought-card-body-row {
+    display: flex;
+    align-items: flex-start;
+}
+
+.thought-card-content-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Reminder Elements */
+.badge-reminder {
+    background: rgba(253, 150, 68, 0.12) !important;
+    color: #fd9644 !important;
+    border: 1px solid rgba(253, 150, 68, 0.25) !important;
+}
+
+.badge-reminder-sent {
+    background: rgba(46, 213, 115, 0.12) !important;
+    color: #2ed573 !important;
+    border: 1px solid rgba(46, 213, 115, 0.25) !important;
+}
+
+.badge-reminder-pending {
+    background: rgba(255, 71, 87, 0.12) !important;
+    color: #ff4757 !important;
+    border: 1px solid rgba(255, 71, 87, 0.25) !important;
+}
+
 
