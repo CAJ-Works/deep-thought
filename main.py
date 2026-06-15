@@ -211,11 +211,13 @@ def login(
         db.commit()
         
         # Set HttpOnly Cookie
+        # Secure is dynamically enabled if running behind HTTPS (Cloudflare Tunnel)
+        is_secure = request.headers.get("x-forwarded-proto") == "https" or "https" in request.headers.get("cf-visitor", "")
         response.set_cookie(
             key="session_token",
             value=session_token,
             httponly=True,
-            secure=False,  # Set to True if serving HTTPS via Cloudflare
+            secure=is_secure,
             samesite="lax",
             expires=expires_at.replace(tzinfo=datetime.timezone.utc)
         )
