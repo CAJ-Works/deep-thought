@@ -79,6 +79,7 @@ class Thought(Base):
     category = Column(String, nullable=True, index=True)
     processed = Column(Boolean, default=False, index=True)
     enrichment_summary = Column(Text, nullable=True)
+    next_steps = Column(Text, nullable=True)
     
     # Relationships
     user = relationship("User", back_populates="thoughts")
@@ -96,6 +97,7 @@ class Thought(Base):
             "category": self.category,
             "processed": self.processed,
             "enrichment_summary": self.enrichment_summary,
+            "next_steps": self.next_steps,
             "web_references": [ref.to_dict() for ref in self.web_references]
         }
 
@@ -206,6 +208,15 @@ def init_db():
         db.execute(text("UPDATE users SET location_enabled = 0 WHERE location_enabled IS NULL"))
         db.commit()
         print("Database migrated: added 'location_enabled' column to 'users' table.")
+    except Exception as e:
+        # Column already exists or failed, ignore
+        pass
+
+    # Programmatically add next_steps column if it doesn't exist
+    try:
+        db.execute(text("ALTER TABLE thoughts ADD COLUMN next_steps TEXT"))
+        db.commit()
+        print("Database migrated: added 'next_steps' column to 'thoughts' table.")
     except Exception as e:
         # Column already exists or failed, ignore
         pass

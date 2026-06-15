@@ -163,5 +163,53 @@ class DeepThoughtTestCase(unittest.TestCase):
         u_dict = self.chris.to_dict()
         self.assertTrue(u_dict["lockout_until"].endswith("Z"))
 
+    def test_thought_edit_and_next_steps(self):
+        thought = Thought(
+            user_id=self.chris.id,
+            content="Original content",
+            latitude=40.7128,
+            longitude=-74.0060,
+            location_name="New York",
+            enrichment_summary="Original summary",
+            next_steps="Original next steps",
+            processed=True
+        )
+        self.db.add(thought)
+        self.db.commit()
+        
+        # Add a mock web reference
+        web_ref = WebReference(
+            thought_id=thought.id,
+            url="http://example.com",
+            title="Example Link"
+        )
+        self.db.add(web_ref)
+        self.db.commit()
+        
+        # Refresh from DB
+        self.db.refresh(thought)
+        self.assertEqual(thought.next_steps, "Original next steps")
+        self.assertEqual(len(thought.web_references), 1)
+        
+        # Simulate update logic (same as our PUT endpoint)
+        thought.content = "Updated content"
+        thought.processed = False
+        thought.enrichment_summary = None
+        thought.next_steps = None
+        self.db.query(WebReference).filter(WebReference.thought_id == thought.id).delete()
+        self.db.commit()
+        
+        # Verify changes
+        self.db.refresh(thought)
+        self.assertEqual(thought.content, "Updated content")
+        self.assertFalse(thought.processed)
+        self.assertIsNone(thought.enrichment_summary)
+        self.assertIsNone(thought.next_steps)
+        self.assertEqual(len(thought.web_references), 0)
+        # Verify location was preserved
+        self.assertEqual(thought.latitude, 40.7128)
+        self.assertEqual(thought.longitude, -74.0060)
+        self.assertEqual(thought.location_name, "New York")
+
 if __name__ == "__main__":
     unittest.main()

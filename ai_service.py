@@ -141,7 +141,7 @@ class AIService:
                 "stream": False
             }
             
-            response = requests.post(url, json=payload, timeout=15)
+            response = requests.post(url, json=payload, timeout=60)
             if response.status_code == 200:
                 result = response.json()
                 choices = result.get("choices", [])
@@ -291,6 +291,36 @@ class AIService:
         # Fallback to simple query if JSON parsing fails
         words = content.split()[:5]
         return [" ".join(words)] if words else []
+
+    @classmethod
+    def generate_next_steps(cls, content: str, category: str, summary: str, web_references: list) -> str:
+        """
+        Generates a "Next steps" assessment expanding on the thought, based on content, summary, and web references.
+        """
+        web_refs_context = ""
+        if web_references:
+            web_refs_context = "\nWeb Research Findings:\n" + "\n".join(
+                f"- [{r['title']}]({r['url']}): {r['snippet']}" for r in web_references
+            )
+            
+        system_prompt = (
+            "You are a cognitive expansion assistant. Generate a 'Next Steps' section that expands on the user's thought. "
+            "Follow these rules:\n"
+            "1. If the thought is a To-Do, recommend a concrete checklist or list of steps to accomplish it.\n"
+            "2. If the thought is an Idea, build on it to suggest details, enhance it, or recommend areas to dig deeper.\n"
+            "3. For other categories (e.g. Research, General), provide a helpful continuation, synthesis, or expansion.\n"
+            "Use the provided summary and web research context if relevant. "
+            "Format the output as a clean, brief markdown response."
+        )
+        
+        prompt = (
+            f"User Thought: '{content}'\n"
+            f"Category: {category}\n"
+            f"Structured Summary:\n{summary}\n"
+            f"{web_refs_context}"
+        )
+        
+        return cls.query_llm(prompt=prompt, system_prompt=system_prompt)
 
 
 

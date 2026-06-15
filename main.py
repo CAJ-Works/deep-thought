@@ -86,6 +86,9 @@ class ThoughtCreate(BaseModel):
     longitude: Optional[float] = None
     location_name: Optional[str] = None
 
+class ThoughtUpdate(BaseModel):
+    content: str
+
 class ThoughtResponse(BaseModel):
     id: int
     content: str
@@ -96,6 +99,7 @@ class ThoughtResponse(BaseModel):
     category: Optional[str] = None
     processed: bool
     enrichment_summary: Optional[str] = None
+    next_steps: Optional[str] = None
 
 # ----------------------------------------------------
 # Multi-User Subdomain & Session Dependencies
@@ -287,10 +291,14 @@ def enrich_thought_task(thought_id: int):
         
         # 1. Auto Categorize
         category = AIService.categorize_thought(thought.content)
+        if category.startswith("[LLM generation failed"):
+            raise RuntimeError(f"Categorization failed: {category}")
         thought.category = category
         
         # 2. Summary & Thematic description
         summary = AIService.analyze_and_summarize(thought.content)
+        if summary.startswith("[LLM generation failed"):
+            raise RuntimeError(f"Summary generation failed: {summary}")
         thought.enrichment_summary = summary
         
         # 3. Nightly Web Research queries
@@ -310,6 +318,21 @@ def enrich_thought_task(thought_id: int):
                         snippet=res["snippet"]
                     )
                     db.add(web_ref)
+                    
+        # Flush DB to make sure new web references are queryable
+        db.flush()
+        
+        # 3b. Next steps expansion
+        web_refs = db.query(WebReference).filter(WebReference.thought_id == thought.id).all()
+        next_steps = AIService.generate_next_steps(
+            content=thought.content,
+            category=category,
+            summary=summary,
+            web_references=[{"title": r.title, "url": r.url, "snippet": r.snippet} for r in web_refs]
+        )
+        if next_steps.startswith("[LLM generation failed"):
+            raise RuntimeError(f"Next steps generation failed: {next_steps}")
+        thought.next_steps = next_steps
                     
         # 4. Thematic linking with OTHER thoughts of this user
         others = db.query(Thought).filter(
@@ -472,6 +495,48 @@ def get_thought(
     return res
 
 
+@app.get("/api/thoughts/{thought_id}/next_steps")
+def get_thought_next_steps(
+    thought_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    thought = db.query(Thought).filter(
+        Thought.id == thought_id,
+        Thought.user_id == user.id
+    ).first()
+    if not thought:
+        raise HTTPException(status_code=404, detail="Thought not found")
+        
+    # If the thought is not processed yet, return a pending message immediately without calling the LLM
+    if not thought.processed:
+        return {"next_steps": "AI model deep enrichment in progress..."}
+
+
+    # If already successfully generated, return immediately
+    if thought.next_steps and not thought.next_steps.startswith("[LLM generation failed"):
+        return {"next_steps": thought.next_steps}
+        
+    # Otherwise, generate next steps dynamically
+
+    from ai_service import AIService
+    web_refs = db.query(WebReference).filter(WebReference.thought_id == thought.id).all()
+    try:
+        next_steps = AIService.generate_next_steps(
+            content=thought.content,
+            category=thought.category or "General",
+            summary=thought.enrichment_summary or "",
+            web_references=[{"title": r.title, "url": r.url, "snippet": r.snippet} for r in web_refs]
+        )
+        if next_steps and not next_steps.startswith("[LLM generation failed"):
+            thought.next_steps = next_steps
+            db.commit()
+        return {"next_steps": next_steps}
+    except Exception as e:
+        logger.error(f"Failed dynamic next steps generation: {e}")
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+
+
 @app.post("/api/thoughts/{thought_id}/process")
 def reprocess_thought(
     thought_id: int,
@@ -514,6 +579,36 @@ def delete_thought(
         db.rollback()
         logger.error(f"Failed to delete thought {thought_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/thoughts/{thought_id}")
+def update_thought(
+    thought_id: int,
+    thought_in: ThoughtUpdate,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    thought = db.query(Thought).filter(
+        Thought.id == thought_id,
+        Thought.user_id == user.id
+    ).first()
+    if not thought:
+        raise HTTPException(status_code=404, detail="Thought not found")
+        
+    thought.content = thought_in.content
+    thought.processed = False
+    
+    # Clear old next steps, summary, web references, and links to allow clean re-processing
+    thought.next_steps = None
+    thought.enrichment_summary = None
+    db.query(WebReference).filter(WebReference.thought_id == thought.id).delete()
+    db.query(ThoughtLink).filter((ThoughtLink.source_id == thought.id) | (ThoughtLink.target_id == thought.id)).delete()
+    
+    db.commit()
+    
+    background_tasks.add_task(enrich_thought_task, thought_id)
+    return {"status": "updated_and_processing"}
 
 
 @app.get("/api/graph")

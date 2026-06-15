@@ -69,5 +69,7 @@ def start_scheduler():
     scheduler.start()
     logger.info("Background job scheduler started successfully.")
     
-    # Trigger an immediate run in the background upon startup to process any stale items
-    periodic_enrichment_job()
+    # Trigger an immediate run in the background upon startup to process any stale items in a daemon thread
+    import threading
+    threading.Thread(target=periodic_enrichment_job, name="startup-enrichment", daemon=True).start()
+

@@ -46,6 +46,32 @@ let userCoordinates = null;
 let isLocationActive = false;
 let processingPollInterval = null;
 
+// Markdown formatter utility
+function formatMarkdown(text) {
+    if (!text) return "";
+    let escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+        
+    // Convert bold **text**
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    
+    // Convert markdown links [label](url)
+    escaped = escaped.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: var(--primary-color); text-decoration: underline;">$1</a>');
+    
+    // Convert bullet points starting with - or *
+    escaped = escaped.replace(/^(?:[-*]|\d+\.)\s+(.*?)$/gm, "<li>$1</li>");
+    
+    // Wrap lists in <ul> tags (using [\s\S] instead of dotAll /s flag for universal browser compatibility)
+    escaped = escaped.replace(/(?:<li>([\s\S]*?)<\/li>\s*)+/g, (match) => `<ul style="margin-left: 20px; margin-bottom: 8px;">${match}</ul>`);
+    
+    // Convert newlines to breaks where not inside list containers
+    escaped = escaped.replace(/\n/g, "<br>");
+    
+    return escaped;
+}
+
 // ----------------------------------------------------
 // Page Initialization & Auth Checks
 // ----------------------------------------------------
@@ -738,48 +764,130 @@ async function openThoughtDetails(thought_id) {
             `;
         }
         
-        let locationHtml = "";
-        if (data.location_name || (data.latitude && data.longitude)) {
-            const displayLoc = data.location_name || "Self-hosted Mini";
-            const mapsLink = data.latitude && data.longitude ? 
-                ` (<a href="https://www.google.com/maps/search/?api=1&query=${data.latitude},${data.longitude}" target="_blank" class="location-link">Open in Google Maps</a>)` : "";
-            const coordsStr = data.latitude && data.longitude ? 
-                `<br><span style="font-size: 0.8rem; color: var(--text-muted);">Coordinates: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}</span>` : "";
-                
-            locationHtml = `
-                <div class="detail-section">
-                    <h4>Captured Location</h4>
-                    <p class="detail-text" style="font-size: 0.9rem;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle; margin-right: 4px;">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                            <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                        <span>${displayLoc}</span>${mapsLink}${coordsStr}
-                    </p>
+        const locationLink = (data.latitude && data.longitude) ? 
+            `<a href="https://www.google.com/maps/search/?api=1&query=${data.latitude},${data.longitude}" target="_blank" class="location-link" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">Open in Google Maps</a>` : 
+            `<span style="color: var(--error-color);">❌</span>`;
+        
+        const locationHtml = `
+            <div class="detail-section" style="margin-bottom: 16px;">
+                <h4 style="display: inline-block; margin-right: 8px; margin-bottom: 0;">Captured Location:</h4>
+                ${locationLink}
+            </div>
+        `;
+        
+        const hasNextSteps = data.next_steps && !data.next_steps.startsWith("[LLM generation failed");
+        
+        let nextStepsHtml = `
+            <div class="detail-section">
+                <h4>Next Steps</h4>
+                <div class="detail-summary" id="next-steps-container" style="line-height: 1.5; font-size: 0.88rem;">
+                    ${hasNextSteps ? formatMarkdown(data.next_steps) : (data.processed ? `<span style="opacity: 0.6; font-style: italic;">Generating next steps...</span>` : `<span style="opacity: 0.6; font-style: italic;">AI model deep enrichment in progress...</span>`)}
                 </div>
-            `;
-        }
+            </div>
+        `;
         
         body.innerHTML = `
-            <div class="detail-section">
-                <h4>Raw Captured Thought</h4>
-                <p class="detail-text">${data.content}</p>
+            <div class="detail-section" id="raw-thought-section" style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <h4 style="margin: 0;">Raw Captured Thought</h4>
+                    <button class="btn btn-secondary" id="edit-thought-btn" style="padding: 2px 8px; font-size: 0.75rem; border-radius: 6px;">Edit</button>
+                </div>
+                <p class="detail-text" id="raw-thought-text" style="white-space: pre-wrap; word-break: break-word; margin: 0; line-height: 1.5;">${data.content}</p>
             </div>
             
             ${locationHtml}
             
             <div class="detail-section">
                 <h4>AI Structured Summary</h4>
-                <div class="detail-summary">
-                    ${data.enrichment_summary ? data.enrichment_summary : "AI model deep enrichment currently in progress. It runs nightly or when triggered manually."}
+                <div class="detail-summary" style="line-height: 1.5;">
+                    ${data.enrichment_summary ? formatMarkdown(data.enrichment_summary) : "AI model deep enrichment currently in progress. It runs nightly or when triggered manually."}
                 </div>
             </div>
             
+            ${nextStepsHtml}
             ${webRefsHtml}
             ${linksHtml}
         `;
         
         modal.classList.add("active");
+        
+        // Asynchronously fetch next steps if not already present or previously failed, only if thought is processed
+        if (!hasNextSteps && data.processed) {
+            fetch(`/api/thoughts/${data.id}/next_steps`)
+                .then(res => {
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    return res.json();
+                })
+                .then(nsData => {
+                    const container = document.getElementById("next-steps-container");
+                    if (container) {
+                        container.innerHTML = nsData.next_steps ? formatMarkdown(nsData.next_steps) : "No next steps available.";
+                    }
+                })
+                .catch(err => {
+                    console.error("Failed to load next steps dynamically:", err);
+                    const container = document.getElementById("next-steps-container");
+                    if (container) {
+                        container.innerHTML = `<span style="color: var(--error-color);">Failed to load next steps: ${err.message}. Close and reopen to retry.</span>`;
+                    }
+                });
+        }
+        
+        const editBtn = document.getElementById("edit-thought-btn");
+        if (editBtn) {
+            editBtn.addEventListener("click", () => {
+                const rawSection = document.getElementById("raw-thought-section");
+                const rawText = document.getElementById("raw-thought-text").textContent;
+                
+                rawSection.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h4 style="margin: 0;">Raw Captured Thought</h4>
+                        <div>
+                            <button class="btn btn-secondary" id="cancel-edit-btn" style="padding: 2px 8px; font-size: 0.75rem; margin-right: 6px; border-radius: 6px;">Cancel</button>
+                            <button class="btn btn-primary" id="save-thought-btn" style="padding: 2px 8px; font-size: 0.75rem; border-radius: 6px;">Save & Re-process</button>
+                        </div>
+                    </div>
+                    <textarea id="edit-thought-textarea" class="form-control" style="width: 100%; min-height: 100px; font-family: inherit; font-size: 0.9rem; padding: 10px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; margin-top: 6px;">${rawText}</textarea>
+                `;
+                
+                document.getElementById("cancel-edit-btn").addEventListener("click", () => {
+                    openThoughtDetails(data.id);
+                });
+                
+                document.getElementById("save-thought-btn").addEventListener("click", async () => {
+                    const newContent = document.getElementById("edit-thought-textarea").value.trim();
+                    if (!newContent) return;
+                    
+                    rawSection.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <span style="font-size: 0.9rem; color: var(--text-muted);">Saving changes and starting re-enrichment...</span>
+                        </div>
+                    `;
+                    
+                    try {
+                        const putResponse = await fetch(`/api/thoughts/${data.id}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ content: newContent })
+                        });
+                        
+                        if (putResponse.ok) {
+                            openThoughtDetails(data.id);
+                            if (typeof fetchThoughts === "function") {
+                                fetchThoughts();
+                            }
+                        } else {
+                            alert("Failed to update thought.");
+                            openThoughtDetails(data.id);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert("Error updating thought.");
+                        openThoughtDetails(data.id);
+                    }
+                });
+            });
+        }
     } catch (e) {
         console.error("Failed to load details modal: " + e);
     }
