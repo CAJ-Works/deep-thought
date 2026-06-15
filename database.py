@@ -248,6 +248,13 @@ def init_db():
             # Already exists or failed, ignore
             pass
     
+    # One-time data migration for existing thoughts
+    try:
+        db.execute(text("UPDATE thoughts SET is_todo = 1 WHERE category LIKE '%todo%' OR category LIKE '%to-do%'"))
+        db.commit()
+    except Exception as e:
+        pass
+        
     db.close()
 
 if __name__ == "__main__":

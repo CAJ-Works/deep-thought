@@ -410,7 +410,8 @@ function renderTimeline() {
     
     // Filter thoughts based on active tab
     const filteredThoughts = activeThoughts.filter(t => {
-        if (activeTab === "todos") return t.is_todo;
+        const isTodo = t.is_todo || (t.category && (t.category.toLowerCase().includes("todo") || t.category.toLowerCase().includes("to-do")));
+        if (activeTab === "todos") return isTodo;
         if (activeTab === "reminders") return t.is_reminder;
         return true;
     });
@@ -430,7 +431,8 @@ function renderTimeline() {
     filteredThoughts.forEach(t => {
         const dateStr = new Date(t.created_at).toLocaleString();
         const card = document.createElement("div");
-        card.className = "thought-card" + (t.is_todo && t.todo_done ? " todo-card-done" : "");
+        const isTodo = t.is_todo || (t.category && (t.category.toLowerCase().includes("todo") || t.category.toLowerCase().includes("to-do")));
+        card.className = "thought-card" + (isTodo && t.todo_done ? " todo-card-done" : "");
         
         // Dynamic badges
         let reminderBadge = "";
@@ -446,7 +448,7 @@ function renderTimeline() {
         
         // Body layout changes depending on whether card is a To-Do task
         let bodyHtml = "";
-        if (t.is_todo) {
+        if (isTodo) {
             bodyHtml = `
                 <div class="thought-card-body-row">
                     <div class="todo-checkbox-wrapper">
@@ -496,7 +498,7 @@ function renderTimeline() {
         });
         
         // Attach To-Do checkbox listener
-        if (t.is_todo) {
+        if (isTodo) {
             const checkbox = card.querySelector(".todo-checkbox");
             if (checkbox) {
                 checkbox.addEventListener("click", (e) => {
@@ -583,8 +585,8 @@ function setupFilterEvents() {
     document.querySelectorAll(".timeline-tabs .tab-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
             document.querySelectorAll(".timeline-tabs .tab-btn").forEach(b => b.classList.remove("active"));
-            e.target.classList.add("active");
-            activeTab = e.target.getAttribute("data-tab");
+            e.currentTarget.classList.add("active");
+            activeTab = e.currentTarget.getAttribute("data-tab");
             renderTimeline();
         });
     });

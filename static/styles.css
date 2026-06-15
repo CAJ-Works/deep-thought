@@ -1629,11 +1629,13 @@ body[data-theme="tokyo"] .filter-controls select {
 
 /* Tasks (To-Dos) & Reminders Styling */
 .timeline-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 12px;
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 24px;
 }
 
 .tab-btn {
@@ -1641,23 +1643,23 @@ body[data-theme="tokyo"] .filter-controls select {
     border: none;
     color: var(--text-secondary);
     font-family: var(--font-body);
-    font-size: 0.88rem;
-    font-weight: 500;
-    padding: 6px 16px;
-    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 8px;
     cursor: pointer;
     transition: var(--transition);
 }
 
 .tab-btn:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .tab-btn.active {
     color: #fff;
-    background: var(--primary-color);
-    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+    background: linear-gradient(135deg, var(--primary-color), #5f27cd);
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.25);
 }
 
 /* To-Do Elements */
@@ -1669,13 +1671,39 @@ body[data-theme="tokyo"] .filter-controls select {
 }
 
 .todo-checkbox {
+    -webkit-appearance: none;
+    appearance: none;
     width: 20px;
     height: 20px;
     border-radius: 6px;
     border: 2px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
     cursor: pointer;
-    accent-color: var(--primary-color);
+    position: relative;
     transition: var(--transition);
+    outline: none;
+}
+
+.todo-checkbox:hover {
+    border-color: var(--primary-color);
+    background: rgba(108, 92, 231, 0.05);
+}
+
+.todo-checkbox:checked {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.todo-checkbox:checked::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 7px;
+    width: 4px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
 }
 
 .thought-card.todo-card-done {
