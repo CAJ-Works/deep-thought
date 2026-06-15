@@ -514,10 +514,14 @@ function setupFilterEvents() {
 // ----------------------------------------------------
 
 function setupModalEvents() {
-    document.getElementById("close-modal").addEventListener("click", closeModal);
-    document.getElementById("details-modal").addEventListener("click", (e) => {
-        if (e.target.id === "details-modal") closeModal();
-    });
+    const detailsModal = document.getElementById("details-modal");
+    if (detailsModal) {
+        detailsModal.addEventListener("click", (e) => {
+            if (e.target.closest(".close-modal-btn") || e.target.id === "details-modal") {
+                closeModal();
+            }
+        });
+    }
 }
 
 function closeModal() {
@@ -972,9 +976,11 @@ function setupSettingsEvents() {
         });
     }
     
-    if (closeSettingsBtn) {
-        closeSettingsBtn.addEventListener("click", () => {
-            settingsModal.classList.remove("active");
+    if (settingsModal) {
+        settingsModal.addEventListener("click", (e) => {
+            if (e.target.closest(".close-modal-btn") || e.target.id === "settings-modal") {
+                settingsModal.classList.remove("active");
+            }
         });
     }
     
@@ -1052,15 +1058,9 @@ function setupMapEvents() {
         });
     }
     
-    if (closeMapBtn) {
-        closeMapBtn.addEventListener("click", () => {
-            if (mapModal) mapModal.classList.remove("active");
-        });
-    }
-    
     if (mapModal) {
         mapModal.addEventListener("click", (e) => {
-            if (e.target.id === "map-modal") {
+            if (e.target.closest(".close-modal-btn") || e.target.id === "map-modal") {
                 mapModal.classList.remove("active");
             }
         });
@@ -1240,15 +1240,9 @@ function setupCalendarEvents() {
         });
     }
     
-    if (closeCalendarBtn) {
-        closeCalendarBtn.addEventListener("click", () => {
-            if (calendarModal) calendarModal.classList.remove("active");
-        });
-    }
-    
     if (calendarModal) {
         calendarModal.addEventListener("click", (e) => {
-            if (e.target.id === "calendar-modal") {
+            if (e.target.closest(".close-modal-btn") || e.target.id === "calendar-modal") {
                 calendarModal.classList.remove("active");
             }
         });
