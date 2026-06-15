@@ -229,7 +229,7 @@ def login(
             expires=expires_at.replace(tzinfo=datetime.timezone.utc)
         )
         
-        return {"status": "success", "username": user.username, "theme": user.theme, "location_enabled": user.location_enabled}
+        return {"status": "success", "username": user.username, "theme": user.theme, "location_enabled": user.location_enabled, "ntfy_topic": config.NTFY_TOPIC}
     else:
         # Increment failed login attempts
         user.failed_attempts += 1
@@ -249,7 +249,13 @@ def login(
 
 @app.get("/api/auth/me")
 def get_me(user: User = Depends(get_current_user)):
-    return {"authenticated": True, "username": user.username, "theme": user.theme, "location_enabled": user.location_enabled}
+    return {
+        "authenticated": True, 
+        "username": user.username, 
+        "theme": user.theme, 
+        "location_enabled": user.location_enabled,
+        "ntfy_topic": config.NTFY_TOPIC
+    }
 
 @app.get("/api/log_error")
 def log_error(msg: str):

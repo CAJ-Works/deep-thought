@@ -12,6 +12,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
 let currentPIN = "";
 let currentUser = "";
+let currentNtfyTopic = "";
 let activeThoughts = [];
 let dbCategories = new Set();
 let activeTab = "all";
@@ -113,6 +114,7 @@ async function checkAuthStatus() {
         const response = await fetch("/api/auth/me");
         if (response.ok) {
             const data = await response.json();
+            currentNtfyTopic = data.ntfy_topic || "";
             showWorkspace(data.username, data.theme, data.location_enabled);
         } else {
             showAuthScreen();
@@ -243,6 +245,7 @@ async function submitPinLogin() {
             const data = await response.json();
             currentPIN = "";
             updatePinDots();
+            currentNtfyTopic = data.ntfy_topic || "";
             showWorkspace(data.username, data.theme, data.location_enabled);
         } else {
             const data = await response.json();
@@ -1055,6 +1058,12 @@ function setupSettingsEvents() {
                 locCheckbox.checked = localStorage.getItem("deep_thought_location_enabled") === "true";
             }
             
+            // Sync ntfy topic field
+            const ntfyInput = document.getElementById("settings-ntfy-topic");
+            if (ntfyInput) {
+                ntfyInput.value = currentNtfyTopic || "";
+            }
+            
             settingsModal.classList.add("active");
         });
     }
@@ -1064,6 +1073,30 @@ function setupSettingsEvents() {
             if (e.target.closest(".close-modal-btn") || e.target.id === "settings-modal") {
                 settingsModal.classList.remove("active");
             }
+        });
+    }
+    
+    // Copy ntfy topic helper
+    const copyNtfyBtn = document.getElementById("copy-ntfy-btn");
+    const ntfyInput = document.getElementById("settings-ntfy-topic");
+    if (copyNtfyBtn && ntfyInput) {
+        copyNtfyBtn.addEventListener("click", () => {
+            const topic = ntfyInput.value.trim();
+            if (!topic) return;
+            
+            navigator.clipboard.writeText(topic).then(() => {
+                const originalText = copyNtfyBtn.textContent;
+                copyNtfyBtn.textContent = "Copied!";
+                copyNtfyBtn.style.borderColor = "var(--success-color, #10b981)";
+                copyNtfyBtn.style.color = "var(--success-color, #10b981)";
+                setTimeout(() => {
+                    copyNtfyBtn.textContent = originalText;
+                    copyNtfyBtn.style.borderColor = "";
+                    copyNtfyBtn.style.color = "";
+                }, 2000);
+            }).catch(err => {
+                console.error("Failed to copy ntfy topic: ", err);
+            });
         });
     }
     
