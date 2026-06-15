@@ -15,15 +15,7 @@ let currentUser = "";
 let activeThoughts = [];
 let dbCategories = new Set();
 
-// Speech Recognition variables
-let recognition = null;
-let isRecordingSpeech = false;
-let visualizerStream = null;
-let audioContext = null;
-let analyserNode = null;
-let animationFrameId = null;
-let recordingStartTime = null;
-let recordingInterval = null;
+
 
 // Graph Visualization variables
 let graphData = { nodes: [], edges: [] };
@@ -343,8 +335,6 @@ function setupCaptureEvents() {
     // Capture thought submit
     document.getElementById("submit-btn").addEventListener("click", submitTextThought);
     
-    // Voice Capture toggle
-    document.getElementById("voice-btn").addEventListener("click", toggleVoiceRecording);
 }
 
 // ----------------------------------------------------
@@ -352,10 +342,6 @@ function setupCaptureEvents() {
 // ----------------------------------------------------
 
 async function submitTextThought() {
-    // If we are currently recording voice, stop it first!
-    if (isRecordingSpeech) {
-        toggleVoiceRecording();
-    }
 
     const textarea = document.getElementById("thought-input");
     const content = textarea.value.strip ? textarea.value.strip() : textarea.value.trim();
@@ -383,167 +369,7 @@ async function submitTextThought() {
     }
 }
 
-let speechBaseContent = "";
 
-function initSpeechRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        const voiceBtn = document.getElementById("voice-btn");
-        if (voiceBtn) voiceBtn.style.display = "none";
-        return;
-    }
-    
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    
-    recognition.onstart = () => {
-        isRecordingSpeech = true;
-        const voiceBtn = document.getElementById("voice-btn");
-        if (voiceBtn) voiceBtn.classList.add("recording");
-        const textarea = document.getElementById("thought-input");
-        if (textarea) {
-            speechBaseContent = textarea.value;
-            textarea.placeholder = "[Listening to your voice... Speak now]";
-        }
-        document.getElementById("waveform-container").classList.add("active");
-        
-        try {
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                visualizerStream = stream;
-                startWaveformVisualizer(stream);
-            }).catch(e => console.log("Visualizer microphone stream error:", e));
-        } catch (e) {
-            console.log("Could not start visualizer stream:", e);
-        }
-    };
-    
-    recognition.onresult = (event) => {
-        let interimTranscript = "";
-        let finalTranscript = "";
-        
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript;
-            } else {
-                interimTranscript += event.results[i][0].transcript;
-            }
-        }
-        
-        const textarea = document.getElementById("thought-input");
-        if (textarea) {
-            const separator = speechBaseContent && !speechBaseContent.endsWith(" ") ? " " : "";
-            textarea.value = speechBaseContent + separator + finalTranscript + interimTranscript;
-            textarea.scrollTop = textarea.scrollHeight;
-        }
-    };
-    
-    recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        if (event.error === "not-allowed") {
-            alert("Speech recognition permission denied.");
-            if (isRecordingSpeech) {
-                recognition.stop();
-            }
-        }
-    };
-    
-    recognition.onend = () => {
-        isRecordingSpeech = false;
-        const voiceBtn = document.getElementById("voice-btn");
-        if (voiceBtn) voiceBtn.classList.remove("recording");
-        const textarea = document.getElementById("thought-input");
-        if (textarea) {
-            textarea.placeholder = "Enter a thought, project concept, or research link...";
-        }
-        document.getElementById("waveform-container").classList.remove("active");
-        
-        if (visualizerStream) {
-            visualizerStream.getTracks().forEach(track => track.stop());
-            visualizerStream = null;
-        }
-        stopWaveformVisualizer();
-    };
-}
-
-function toggleVoiceRecording() {
-    if (!recognition) {
-        initSpeechRecognition();
-    }
-    
-    if (!recognition) return;
-    
-    if (isRecordingSpeech) {
-        recognition.stop();
-    } else {
-        try {
-            recognition.start();
-        } catch (e) {
-            console.error("Failed to start speech recognition:", e);
-        }
-    }
-}
-
-// ----------------------------------------------------
-// Recording Waveform Canvas Visualizer
-// ----------------------------------------------------
-
-function startWaveformVisualizer(stream) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioContext.createMediaStreamSource(stream);
-    analyserNode = audioContext.createAnalyser();
-    analyserNode.fftSize = 128;
-    source.connect(analyserNode);
-    
-    const canvas = document.getElementById("waveform-canvas");
-    const ctx = canvas.getContext("2d");
-    const bufferLength = analyserNode.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    
-    recordingStartTime = Date.now();
-    recordingInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        const secs = String(elapsed % 60).padStart(2, '0');
-        document.getElementById("recording-timer").textContent = `${mins}:${secs}`;
-    }, 1000);
-    
-    function draw() {
-        animationFrameId = requestAnimationFrame(draw);
-        analyserNode.getByteFrequencyData(dataArray);
-        
-        ctx.fillStyle = "#07090e";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        const barWidth = (canvas.width / bufferLength) * 1.5;
-        let barHeight;
-        let x = 0;
-        
-        for (let i = 0; i < bufferLength; i++) {
-            barHeight = dataArray[i] / 2.5;
-            
-            // Draw gradient bars
-            ctx.fillStyle = `rgb(108, 92, ${dataArray[i] + 100})`;
-            ctx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
-            
-            x += barWidth;
-        }
-    }
-    
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    draw();
-}
-
-function stopWaveformVisualizer() {
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    if (recordingInterval) clearInterval(recordingInterval);
-    if (audioContext) audioContext.close();
-    
-    document.getElementById("recording-timer").textContent = "00:00";
-    mediaRecorder = null;
-}
 
 // ----------------------------------------------------
 // Fetch & Render Timeline Feed
