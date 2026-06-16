@@ -306,7 +306,7 @@ class DeepThoughtTestCase(unittest.TestCase):
         with patch("notifier.send_push_notification") as mock_send:
             # 1. Success case
             mock_send.return_value = True
-            with patch("config.NTFY_TOPIC", "some_topic"):
+            with patch("config.NTFY_TOPIC", "some_topic"), patch("config.BASE_DOMAIN", "teamjames.cc"):
                 response = client.post("/api/user/test-notification")
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()["status"], "success")

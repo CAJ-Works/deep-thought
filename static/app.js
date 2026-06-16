@@ -1072,33 +1072,43 @@ function setupSettingsEvents() {
                 ntfyStatus.textContent = "";
             }
 
-            const ntfyTopicCode = document.getElementById("setup-ntfy-topic-code");
-            if (ntfyTopicCode) {
-                ntfyTopicCode.textContent = currentNtfyTopic || "No topic configured";
-            }
-
-            const ntfyServerCode = document.getElementById("setup-ntfy-server-code");
-            if (ntfyServerCode) {
-                ntfyServerCode.textContent = currentNtfyUrl || "https://ntfy.sh";
-            }
-
             const ntfyServerDisplay = document.getElementById("settings-ntfy-server-display");
-            if (ntfyServerDisplay) {
-                let displayName = "ntfy.sh";
-                if (currentNtfyUrl) {
-                    try {
-                        const urlObj = new URL(currentNtfyUrl);
-                        displayName = urlObj.hostname;
-                    } catch (e) {
-                        displayName = currentNtfyUrl.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0] || "ntfy.sh";
-                    }
+            let displayName = "ntfy.sh";
+            if (currentNtfyUrl) {
+                try {
+                    const urlObj = new URL(currentNtfyUrl);
+                    displayName = urlObj.hostname;
+                } catch (e) {
+                    displayName = currentNtfyUrl.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0] || "ntfy.sh";
                 }
+            }
+            if (ntfyServerDisplay) {
                 ntfyServerDisplay.textContent = displayName;
             }
 
             const ntfyHelpCard = document.getElementById("ntfy-help-card");
             if (ntfyHelpCard) {
                 ntfyHelpCard.style.display = "none";
+                
+                let cleanUrl = currentNtfyUrl || "https://ntfy.sh";
+                let isCustom = !cleanUrl.includes("ntfy.sh");
+                
+                let html = `<strong style="display: block; margin-bottom: 6px; color: var(--primary-color);">Setup Instructions:</strong>`;
+                html += `1. Install the <strong>ntfy</strong> app on your device.<br>`;
+                html += `2. Tap the <strong>+</strong> icon (Subscribe to topic).<br>`;
+                
+                if (isCustom) {
+                    html += `3. Change the <strong>Server</strong> setting from "ntfy.sh" to your custom server URL:<br>`;
+                    html += `<code style="display: inline-block; margin: 4px 0; padding: 3px 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; font-family: monospace; font-size: 0.75rem; word-break: break-all; color: #00cec9;">${cleanUrl}</code><br>`;
+                    html += `4. Enter your topic name:<br>`;
+                    html += `<code style="display: inline-block; margin: 4px 0; padding: 3px 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; font-family: monospace; font-size: 0.75rem; word-break: break-all; color: #00cec9;">${currentNtfyTopic || 'No topic configured'}</code><br>`;
+                    html += `5. Tap <strong>Subscribe</strong>. Reminders will now push directly to your phone.`;
+                } else {
+                    html += `3. Enter your topic name:<br>`;
+                    html += `<code style="display: inline-block; margin: 4px 0; padding: 3px 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; font-family: monospace; font-size: 0.75rem; word-break: break-all; color: #00cec9;">${currentNtfyTopic || 'No topic configured'}</code><br>`;
+                    html += `4. Tap <strong>Subscribe</strong>. Reminders will now push directly to your phone.`;
+                }
+                ntfyHelpCard.innerHTML = html;
             }
             const toggleHelpBtn = document.getElementById("toggle-help-btn");
             if (toggleHelpBtn) {
