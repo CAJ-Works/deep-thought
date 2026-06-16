@@ -359,7 +359,11 @@ async function submitTextThought() {
         latitude: userCoordinates ? userCoordinates.lat : null,
         longitude: userCoordinates ? userCoordinates.lon : null,
         location_name: userCoordinates ? "Captured coordinates" : null,
-        client_local_time: new Date().toISOString(),
+        client_local_time: (function() {
+            const now = new Date();
+            const tzOffset = now.getTimezoneOffset() * 60000;
+            return new Date(now.getTime() - tzOffset).toISOString().slice(0, -1);
+        })(),
         timezone_offset: new Date().getTimezoneOffset()
     };
     
