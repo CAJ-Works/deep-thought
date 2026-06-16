@@ -807,6 +807,10 @@ def delete_admin_user(request: Request, user_id: int, db: Session = Depends(get_
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.get("/favicon.ico", include_in_schema=False)
+def serve_favicon():
+    return FileResponse("static/favicon.png")
+
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
     return FileResponse("static/index.html")
