@@ -9,6 +9,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./static:/app/static:ro
+      - ./.env:/app/.env:ro
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway" # Maps host macOS localhost access for LM Studio

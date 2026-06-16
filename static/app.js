@@ -1082,6 +1082,20 @@ function setupSettingsEvents() {
                 ntfyServerCode.textContent = currentNtfyUrl || "https://ntfy.sh";
             }
 
+            const ntfyServerDisplay = document.getElementById("settings-ntfy-server-display");
+            if (ntfyServerDisplay) {
+                let displayName = "ntfy.sh";
+                if (currentNtfyUrl) {
+                    try {
+                        const urlObj = new URL(currentNtfyUrl);
+                        displayName = urlObj.hostname;
+                    } catch (e) {
+                        displayName = currentNtfyUrl.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0] || "ntfy.sh";
+                    }
+                }
+                ntfyServerDisplay.textContent = displayName;
+            }
+
             const ntfyHelpCard = document.getElementById("ntfy-help-card");
             if (ntfyHelpCard) {
                 ntfyHelpCard.style.display = "none";
