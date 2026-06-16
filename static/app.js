@@ -1068,6 +1068,11 @@ function setupSettingsEvents() {
             if (ntfyStatus) {
                 ntfyStatus.textContent = "";
             }
+
+            const ntfyTopicCode = document.getElementById("setup-ntfy-topic-code");
+            if (ntfyTopicCode) {
+                ntfyTopicCode.textContent = currentNtfyTopic || "No topic configured";
+            }
             
             settingsModal.classList.add("active");
         });

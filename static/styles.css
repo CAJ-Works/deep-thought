@@ -1746,4 +1746,10 @@ body[data-theme="tokyo"] .filter-controls select {
     border: 1px solid rgba(255, 71, 87, 0.25) !important;
 }
 
+/* Ntfy Info Popup */
+.info-icon-wrapper:hover .info-popup {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
 
