@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=1.22">
+    <link rel="stylesheet" href="/static/styles.css?v=1.23">
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
@@ -259,9 +259,11 @@
                         <strong style="display: block; margin-bottom: 6px; color: var(--primary-color);">Setup Instructions:</strong>
                         1. Install the <strong>ntfy</strong> app on your device.<br>
                         2. Tap the <strong>+</strong> icon (Subscribe to topic).<br>
-                        3. Enter your topic name:<br>
+                        3. Set the server URL to:<br>
+                        <code id="setup-ntfy-server-code" style="display: inline-block; margin: 4px 0; padding: 3px 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; font-family: monospace; font-size: 0.75rem; word-break: break-all; color: #00cec9;"></code><br>
+                        4. Enter your topic name:<br>
                         <code id="setup-ntfy-topic-code" style="display: inline-block; margin: 4px 0; padding: 3px 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; font-family: monospace; font-size: 0.75rem; word-break: break-all; color: #00cec9;"></code><br>
-                        4. Reminders will now push directly to your phone.
+                        5. Reminders will now push directly to your phone.
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
                         <input type="text" id="settings-ntfy-topic" class="settings-input" readonly style="cursor: default; background: rgba(0, 0, 0, 0.4);" placeholder="No topic configured">
@@ -361,6 +363,6 @@
 
     <!-- Leaflet Map JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="/static/app.js?v=1.22"></script>
+    <script src="/static/app.js?v=1.23"></script>
 </body>
 </html>

@@ -13,6 +13,7 @@ window.addEventListener("unhandledrejection", (e) => {
 let currentPIN = "";
 let currentUser = "";
 let currentNtfyTopic = "";
+let currentNtfyUrl = "https://ntfy.sh";
 let activeThoughts = [];
 let dbCategories = new Set();
 let activeTab = "all";
@@ -115,6 +116,7 @@ async function checkAuthStatus() {
         if (response.ok) {
             const data = await response.json();
             currentNtfyTopic = data.ntfy_topic || "";
+            currentNtfyUrl = data.ntfy_url || "https://ntfy.sh";
             showWorkspace(data.username, data.theme, data.location_enabled);
         } else {
             showAuthScreen();
@@ -246,6 +248,7 @@ async function submitPinLogin() {
             currentPIN = "";
             updatePinDots();
             currentNtfyTopic = data.ntfy_topic || "";
+            currentNtfyUrl = data.ntfy_url || "https://ntfy.sh";
             showWorkspace(data.username, data.theme, data.location_enabled);
         } else {
             const data = await response.json();
@@ -1072,6 +1075,11 @@ function setupSettingsEvents() {
             const ntfyTopicCode = document.getElementById("setup-ntfy-topic-code");
             if (ntfyTopicCode) {
                 ntfyTopicCode.textContent = currentNtfyTopic || "No topic configured";
+            }
+
+            const ntfyServerCode = document.getElementById("setup-ntfy-server-code");
+            if (ntfyServerCode) {
+                ntfyServerCode.textContent = currentNtfyUrl || "https://ntfy.sh";
             }
 
             const ntfyHelpCard = document.getElementById("ntfy-help-card");
