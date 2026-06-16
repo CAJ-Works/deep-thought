@@ -281,6 +281,20 @@ def update_settings(
     db.commit()
     return {"status": "success", "theme": user.theme, "location_enabled": user.location_enabled}
 
+@app.post("/api/user/test-notification")
+def send_test_notification(user: User = Depends(get_current_user)):
+    from notifier import send_push_notification
+    if not config.NTFY_TOPIC:
+        raise HTTPException(status_code=400, detail="No push notification service is configured (NTFY_TOPIC is missing).")
+    
+    subdomain = user.subdomain or user.username
+    user_url = f"https://{subdomain.lower()}.{config.BASE_DOMAIN}"
+    msg = f"Test notification from your Deep Thought workspace ({user.username}).\nView: {user_url}"
+    success = send_push_notification(msg)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to dispatch test notification.")
+    return {"status": "success", "message": "Test notification dispatched successfully."}
+
 @app.post("/api/auth/logout")
 def logout(response: Response, request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("session_token")

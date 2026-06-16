@@ -1064,6 +1064,11 @@ function setupSettingsEvents() {
                 ntfyInput.value = currentNtfyTopic || "";
             }
             
+            const ntfyStatus = document.getElementById("settings-ntfy-status");
+            if (ntfyStatus) {
+                ntfyStatus.textContent = "";
+            }
+            
             settingsModal.classList.add("active");
         });
     }
@@ -1097,6 +1102,43 @@ function setupSettingsEvents() {
             }).catch(err => {
                 console.error("Failed to copy ntfy topic: ", err);
             });
+        });
+    }
+
+    // Test ntfy notification helper
+    const testNtfyBtn = document.getElementById("test-ntfy-btn");
+    const ntfyStatus = document.getElementById("settings-ntfy-status");
+    if (testNtfyBtn && ntfyStatus) {
+        testNtfyBtn.addEventListener("click", async () => {
+            ntfyStatus.textContent = "";
+            ntfyStatus.style.color = "";
+            testNtfyBtn.disabled = true;
+            const originalText = testNtfyBtn.textContent;
+            testNtfyBtn.textContent = "Sending...";
+            
+            try {
+                const response = await fetch("/api/user/test-notification", {
+                    method: "POST"
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    ntfyStatus.style.color = "var(--success-color, #10b981)";
+                    ntfyStatus.textContent = "Test notification sent successfully!";
+                } else {
+                    ntfyStatus.style.color = "var(--danger-color, #ff7675)";
+                    ntfyStatus.textContent = "Error: " + (data.detail || "Failed to send test notification.");
+                }
+            } catch (err) {
+                ntfyStatus.style.color = "var(--danger-color, #ff7675)";
+                ntfyStatus.textContent = "Network error. Failed to reach Mac Mini.";
+            } finally {
+                testNtfyBtn.disabled = false;
+                testNtfyBtn.textContent = originalText;
+                // Clear success/error message after 5 seconds
+                setTimeout(() => {
+                    ntfyStatus.textContent = "";
+                }, 5000);
+            }
         });
     }
     

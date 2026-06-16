@@ -292,6 +292,45 @@ class DeepThoughtTestCase(unittest.TestCase):
         ).all()
         self.assertEqual(len(due_after), 0)
 
+    def test_send_test_notification_endpoint(self):
+        from fastapi.testclient import TestClient
+        from main import app, get_current_user
+        from unittest.mock import patch
+
+        client = TestClient(app)
+        
+        # Override dependency with a transient User object to avoid DB session lazy-load thread errors
+        test_user = User(username="chris", subdomain="chris")
+        app.dependency_overrides[get_current_user] = lambda: test_user
+
+        with patch("notifier.send_push_notification") as mock_send:
+            # 1. Success case
+            mock_send.return_value = True
+            with patch("config.NTFY_TOPIC", "some_topic"):
+                response = client.post("/api/user/test-notification")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["status"], "success")
+                mock_send.assert_called_once_with("Test notification from your Deep Thought workspace (chris).\nView: https://chris.teamjames.cc")
+
+            # Reset mock
+            mock_send.reset_mock()
+
+            # 2. No topic configured case
+            with patch("config.NTFY_TOPIC", ""):
+                response = client.post("/api/user/test-notification")
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("missing", response.json()["detail"])
+
+            # 3. Notification dispatch failed case
+            mock_send.return_value = False
+            with patch("config.NTFY_TOPIC", "some_topic"):
+                response = client.post("/api/user/test-notification")
+                self.assertEqual(response.status_code, 500)
+                self.assertIn("Failed to dispatch", response.json()["detail"])
+        
+        # Clean up dependency overrides
+        app.dependency_overrides.clear()
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -30,5 +30,6 @@ NTFY_TOPIC = os.getenv("NTFY_TOPIC", "")
 PUSHOVER_USER_KEY = os.getenv("PUSHOVER_USER_KEY", "")
 PUSHOVER_APP_TOKEN = os.getenv("PUSHOVER_APP_TOKEN", "")
 PUSHBULLET_API_KEY = os.getenv("PUSHBULLET_API_KEY", "")
+BASE_DOMAIN = os.getenv("BASE_DOMAIN", "teamjames.cc")
 
 

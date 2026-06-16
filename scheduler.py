@@ -75,7 +75,10 @@ def dispatch_reminders_job():
         if due_reminders:
             logger.info(f"Found {len(due_reminders)} due reminders. Sending notifications...")
             for thought in due_reminders:
-                message = f"⏰ Reminder: {thought.content}"
+                import config
+                subdomain = thought.user.subdomain or thought.user.username
+                user_url = f"https://{subdomain.lower()}.{config.BASE_DOMAIN}"
+                message = f"⏰ Reminder: {thought.content}\nView: {user_url}"
                 sent = send_push_notification(message)
                 if sent:
                     thought.reminder_sent = True
