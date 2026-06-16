@@ -1073,6 +1073,15 @@ function setupSettingsEvents() {
             if (ntfyTopicCode) {
                 ntfyTopicCode.textContent = currentNtfyTopic || "No topic configured";
             }
+
+            const ntfyHelpCard = document.getElementById("ntfy-help-card");
+            if (ntfyHelpCard) {
+                ntfyHelpCard.style.display = "none";
+            }
+            const toggleHelpBtn = document.getElementById("toggle-help-btn");
+            if (toggleHelpBtn) {
+                toggleHelpBtn.style.color = "var(--text-secondary)";
+            }
             
             settingsModal.classList.add("active");
         });
@@ -1143,6 +1152,22 @@ function setupSettingsEvents() {
                 setTimeout(() => {
                     ntfyStatus.textContent = "";
                 }, 5000);
+            }
+        });
+    }
+
+    // Toggle help card display
+    const toggleHelpBtn = document.getElementById("toggle-help-btn");
+    const ntfyHelpCard = document.getElementById("ntfy-help-card");
+    if (toggleHelpBtn && ntfyHelpCard) {
+        toggleHelpBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (ntfyHelpCard.style.display === "none") {
+                ntfyHelpCard.style.display = "block";
+                toggleHelpBtn.style.color = "var(--primary-color)";
+            } else {
+                ntfyHelpCard.style.display = "none";
+                toggleHelpBtn.style.color = "var(--text-secondary)";
             }
         });
     }
