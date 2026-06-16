@@ -12,3 +12,16 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway" # Maps host macOS localhost access for LM Studio
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: deep-thought-ntfy
+    command: serve
+    environment:
+      - NTFY_BASE_URL=${NTFY_URL:-http://localhost:10080}
+      - NTFY_CACHE_FILE=/var/cache/ntfy/cache.db
+    volumes:
+      - ./data/ntfy:/var/cache/ntfy
+    ports:
+      - "10080:80"
+    restart: unless-stopped

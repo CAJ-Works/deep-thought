@@ -331,6 +331,39 @@ class DeepThoughtTestCase(unittest.TestCase):
         # Clean up dependency overrides
         app.dependency_overrides.clear()
 
+    def test_notifier_url_construction(self):
+        from unittest.mock import patch
+        from notifier import send_push_notification
+
+        with patch("notifier.requests.post") as mock_post, \
+             patch("config.NTFY_TOPIC", "my_topic"), \
+             patch("config.TELEGRAM_BOT_TOKEN", ""), \
+             patch("config.PUSHOVER_USER_KEY", ""), \
+             patch("config.PUSHBULLET_API_KEY", ""):
+            
+            mock_post.return_value.status_code = 200
+
+            # 1. Custom URL without trailing slash
+            with patch("config.NTFY_URL", "http://my-private-ntfy.local"):
+                send_push_notification("hello")
+                mock_post.assert_called_with(
+                    "http://my-private-ntfy.local/my_topic",
+                    data="hello".encode("utf-8"),
+                    headers={"Title": "Deep Thought Reminder"},
+                    timeout=10
+                )
+
+            # 2. Custom URL with trailing slash
+            mock_post.reset_mock()
+            with patch("config.NTFY_URL", "http://my-private-ntfy.local/"):
+                send_push_notification("hello")
+                mock_post.assert_called_with(
+                    "http://my-private-ntfy.local/my_topic",
+                    data="hello".encode("utf-8"),
+                    headers={"Title": "Deep Thought Reminder"},
+                    timeout=10
+                )
+
 if __name__ == "__main__":
     unittest.main()
 

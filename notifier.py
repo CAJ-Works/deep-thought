@@ -31,11 +31,12 @@ def send_push_notification(message: str) -> bool:
         except Exception as e:
             logger.error(f"Failed to send Telegram notification: {e}")
             
-    # 2. Ntfy.sh
+    # 2. Ntfy
     if config.NTFY_TOPIC:
         try:
-            logger.info(f"Sending ntfy notification to topic '{config.NTFY_TOPIC}'...")
-            url = f"https://ntfy.sh/{config.NTFY_TOPIC}"
+            base_url = config.NTFY_URL.rstrip("/")
+            logger.info(f"Sending ntfy notification to topic '{config.NTFY_TOPIC}' on server '{base_url}'...")
+            url = f"{base_url}/{config.NTFY_TOPIC}"
             res = requests.post(
                 url, 
                 data=message.encode("utf-8"), 
